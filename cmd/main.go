@@ -3,6 +3,7 @@ package main
 import (
 	"cmd/internal/jwt"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -16,6 +17,12 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, validation)
 }
 
+func handleRequests() {
+	http.HandleFunc("/", homePage)
+	log.Fatal(http.ListenAndServe(":5001", nil))
+}
+
 func main() {
-	fmt.Println("Lets go")
+	fmt.Println("Lets go ...")
+	handleRequests()
 }
