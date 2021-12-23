@@ -1,14 +1,14 @@
 package main
 
 import (
-	"cmd/internal/jwt"
+	"cmd/internal/jsonwebtoken"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 )
 
 func main() {
-	token, err := jwt.GenerateToken()
+	token, err := jsonwebtoken.GenerateToken()
 
 	if err != nil {
 		panic(err)

@@ -1,4 +1,4 @@
-package jwt
+package jsonwebtoken
 
 import (
 	"github.com/dgrijalva/jwt-go"
