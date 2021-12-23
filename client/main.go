@@ -1,12 +1,11 @@
 package main
 
 import (
-	"cmd/server/internal/jwt"
 	"fmt"
 )
 
 func main() {
-	token, err := jwt.GenerateToken()
+	token, err := Ge
 
 	if err != nil {
 		panic(err)
