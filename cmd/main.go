@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cmd/server/internal/jwt"
+	"cmd/internal/jwt"
 	"fmt"
 	jwt2 "github.com/dgrijalva/jwt-go"
 	"log"
