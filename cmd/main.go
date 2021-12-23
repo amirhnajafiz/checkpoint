@@ -6,14 +6,14 @@ import (
 	"net/http"
 )
 
-func homePage(w http.Response, r *http.Request) {
+func homePage(w http.ResponseWriter, r *http.Request) {
 	validation, err := jwt.GenerateToken()
 
 	if err != nil {
-		panic(err)
+		_, _ = fmt.Fprintf(w, err.Error())
 	}
 
-	fmt.Println(validation)
+	_, _ = fmt.Fprintf(w, validation)
 }
 
 func main() {
