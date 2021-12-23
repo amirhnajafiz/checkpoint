@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cmd/internal/jwt"
+	"cmd/server/internal/jwt"
 	"fmt"
 	"log"
 	"net/http"
