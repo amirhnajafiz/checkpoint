@@ -10,7 +10,7 @@ func TestRegister(t *testing.T) {
 	username := "admin-test"
 	password := "super-pass"
 
-	message := username + password
+	message := username + ":" + password
 
 	if message != HandleRegister(username, password) {
 		t.Error("sign up failed")
