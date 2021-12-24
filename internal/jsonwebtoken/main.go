@@ -1,6 +1,7 @@
 package jsonwebtoken
 
 import (
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"time"
 )
@@ -27,4 +28,14 @@ func GenerateToken() (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+// ParseToken : We check a validation of token in this function
+func ParseToken(token string) (*jwt.Token, error) {
+	return jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		if _, OK := token.Method.(*jwt.SigningMethodHMAC); !OK {
+			return nil, fmt.Errorf("there was an error")
+		}
+		return Key, nil
+	})
 }
