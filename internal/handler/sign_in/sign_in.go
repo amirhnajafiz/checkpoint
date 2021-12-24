@@ -11,5 +11,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Save to database
 
-	_, _ = fmt.Fprint(w, username+":"+password)
+	_, _ = fmt.Fprint(w, HandleRegister(username, password))
+}
+
+func HandleRegister(username string, password string) string {
+	return username + ":" + password
 }
