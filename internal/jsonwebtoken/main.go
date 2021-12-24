@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// This will be our key
-var key = []byte("mysuperseceretpharase")
+// Key : This will be our Key
+var Key = []byte("mysuperseceretpharase")
 
 // GenerateToken : We create a JWT token in GenerateToken function
 func GenerateToken() (string, error) {
@@ -19,7 +19,7 @@ func GenerateToken() (string, error) {
 	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	// Then we generate the token
-	tokenString, err := token.SignedString(key)
+	tokenString, err := token.SignedString(Key)
 
 	if err != nil {
 		panic(err.Error())

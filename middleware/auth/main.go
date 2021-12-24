@@ -1,12 +1,11 @@
 package auth
 
 import (
+	"cmd/internal/jsonwebtoken"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"net/http"
 )
-
-var mySigningKey = []byte("mysuperseceretpharase")
 
 func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -15,7 +14,7 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 				if _, OK := token.Method.(*jwt.SigningMethodHMAC); !OK {
 					return nil, fmt.Errorf("there was an error")
 				}
-				return mySigningKey, nil
+				return jsonwebtoken.Key, nil
 			})
 
 			if err != nil {
