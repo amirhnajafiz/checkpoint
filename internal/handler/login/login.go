@@ -1,4 +1,4 @@
-package handler
+package login
 
 import (
 	"cmd/internal/jsonwebtoken"
@@ -12,6 +12,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: check the user model is database
 
+	_ = json.NewEncoder(w).Encode(HandleLogin(username, password))
+}
+
+func HandleLogin(username string, password string) map[string]string {
 	response := make(map[string]string)
 	token, err := jsonwebtoken.GenerateToken(username + password)
 
@@ -21,5 +25,5 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		response["Token"] = "nil"
 	}
 
-	_ = json.NewEncoder(w).Encode(response)
+	return response
 }
