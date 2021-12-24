@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	token, err := jsonwebtoken.GenerateToken()
+	token, err := jsonwebtoken.GenerateToken("Amir")
 
 	if err != nil {
 		panic(err)
