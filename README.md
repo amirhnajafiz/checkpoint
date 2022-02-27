@@ -33,3 +33,8 @@ Clone the project and enter the following command:
 ```shell
 make dev
 ```
+
+Or use docker:
+```shell
+docker container run -it --name checkpoint -p 8081:80 .
+```
