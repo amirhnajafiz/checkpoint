@@ -2,18 +2,19 @@ package handler
 
 import (
 	"errors"
-	"github.com/amirhnajafiz/checkpoint/internal/config/airbraker"
 	"testing"
+
+	"github.com/amirhnajafiz/checkpoint/internal/config/airbraker"
+	"github.com/amirhnajafiz/checkpoint/internal/jwt"
 )
 
 func TestLogin(t *testing.T) {
 	username := "admin"
 	password := "super-pass"
 
-	response := HandleLogin(username, password)
-
-	if response["Token"] == "nil" {
+	if _, err := jwt.GenerateToken(username + password); err != nil {
 		t.Error("login failed")
+
 		airbraker.Airbrake.Notify(errors.New("login failed"), nil)
 	}
 }
