@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" />
+</p>
+
 <h1 align="center">
 Checkpoint
 </h1>
