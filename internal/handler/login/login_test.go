@@ -2,7 +2,7 @@ package login
 
 import (
 	"errors"
-	"github.com/amirhnajafiz/checkpoint/config/airbraker"
+	"github.com/amirhnajafiz/checkpoint/internal/config/airbraker"
 	"testing"
 )
 

@@ -1,8 +1,8 @@
 package sign_in
 
 import (
-	"cmd/config/airbraker"
 	"errors"
+	"github.com/amirhnajafiz/checkpoint/internal/config/airbraker"
 	"testing"
 )
 

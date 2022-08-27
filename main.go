@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/amirhnajafiz/checkpoint/config/airbraker"
-	"github.com/amirhnajafiz/checkpoint/config/server"
+	"github.com/amirhnajafiz/checkpoint/internal/config/airbraker"
+	"github.com/amirhnajafiz/checkpoint/internal/config/server"
 )
 
 func main() {
