@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/airbrake/gobrake/v5"
 	"github.com/amirhnajafiz/checkpoint/internal/jwt"
@@ -51,13 +50,16 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprint(w, username+":"+password)
+	h.Storage[username] = password
+	h.Air.Notify("new user", nil)
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) GetUserData(w http.ResponseWriter, r *http.Request) {
 	username := r.Context().Value("username").(string)
 
 	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprint(w, strings.ToUpper(username))
+
+	_, _ = fmt.Fprint(w, h.Storage[username])
 }
