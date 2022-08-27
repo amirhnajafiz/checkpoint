@@ -1,8 +1,8 @@
 package login
 
 import (
-	"cmd/internal/jsonwebtoken"
 	"encoding/json"
+	"github.com/amirhnajafiz/checkpoint/internal/jsonwebtoken"
 	"net/http"
 )
 

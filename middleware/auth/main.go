@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"cmd/internal/jsonwebtoken"
 	"fmt"
+	"github.com/amirhnajafiz/checkpoint/internal/jsonwebtoken"
 	"net/http"
 )
 

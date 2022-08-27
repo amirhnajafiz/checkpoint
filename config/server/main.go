@@ -1,10 +1,10 @@
 package server
 
 import (
-	"cmd/internal/handler/login"
-	"cmd/internal/handler/sign_in"
-	"cmd/internal/handler/user_data"
-	"cmd/middleware/auth"
+	"github.com/amirhnajafiz/checkpoint/internal/handler/login"
+	"github.com/amirhnajafiz/checkpoint/internal/handler/sign_in"
+	"github.com/amirhnajafiz/checkpoint/internal/handler/user_data"
+	"github.com/amirhnajafiz/checkpoint/middleware/auth"
 	"log"
 	"net/http"
 )

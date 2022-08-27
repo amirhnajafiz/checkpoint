@@ -1,10 +1,11 @@
 package main
 
 import (
-	"cmd/config/airbraker"
-	"cmd/config/server"
 	"errors"
 	"fmt"
+
+	"github.com/amirhnajafiz/checkpoint/config/airbraker"
+	"github.com/amirhnajafiz/checkpoint/config/server"
 )
 
 func main() {
