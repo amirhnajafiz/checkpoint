@@ -18,7 +18,8 @@ func Execute() {
 	air.Notify("api server started", nil)
 
 	h := handler.Handler{
-		Air: air,
+		Air:     air,
+		Storage: make(map[string]string),
 	}
 
 	http.HandleFunc("/api/login", h.LoginUser)

@@ -10,18 +10,37 @@ import (
 )
 
 type Handler struct {
-	Air *gobrake.Notifier
+	Air     *gobrake.Notifier
+	Storage map[string]string
 }
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
+	if _, ok := h.Storage[username]; !ok {
+		w.WriteHeader(http.StatusNotFound)
+
+		_, _ = fmt.Fprint(w, "user not found")
+
+		return
+	}
+
+	if password != h.Storage[username] {
+		w.WriteHeader(http.StatusUnauthorized)
+
+		_, _ = fmt.Fprint(w, "password does not match")
+
+		return
+	}
+
 	token, err := jwt.GenerateToken(username + password)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 
 		_, _ = fmt.Fprint(w, err.Error())
+
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
