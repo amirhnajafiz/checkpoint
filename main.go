@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/amirhnajafiz/checkpoint/internal/config/airbraker"
-	"github.com/amirhnajafiz/checkpoint/internal/config/server"
+	"github.com/amirhnajafiz/checkpoint/internal/airbraker"
+	"github.com/amirhnajafiz/checkpoint/internal/cmd"
 )
 
 func main() {
@@ -15,5 +15,5 @@ func main() {
 	fmt.Println("API server started ...")
 	airbraker.Airbrake.Notify(errors.New("test from Airbrake"), nil)
 
-	server.HandleRequests()
+	cmd.Execute()
 }
