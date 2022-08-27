@@ -17,9 +17,13 @@ func Execute() {
 
 	air.Notify("api server started", nil)
 
-	http.HandleFunc("/api/login", handler.LoginUser)
-	http.HandleFunc("/api/register", handler.RegisterUser)
-	http.Handle("/api/user", middleware.Auth(handler.GetUserData))
+	h := handler.Handler{
+		Air: air,
+	}
+
+	http.HandleFunc("/api/login", h.LoginUser)
+	http.HandleFunc("/api/register", h.RegisterUser)
+	http.Handle("/api/user", middleware.Auth(h.GetUserData))
 
 	if err := http.ListenAndServe(":5001", nil); err != nil {
 		log.Printf("error: %v\n", err)

@@ -5,10 +5,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/airbrake/gobrake/v5"
 	"github.com/amirhnajafiz/checkpoint/internal/jwt"
 )
 
-func LoginUser(w http.ResponseWriter, r *http.Request) {
+type Handler struct {
+	Air *gobrake.Notifier
+}
+
+func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
@@ -23,7 +28,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, "token:\n%s", token)
 }
 
-func RegisterUser(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
@@ -31,7 +36,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprint(w, username+":"+password)
 }
 
-func GetUserData(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetUserData(w http.ResponseWriter, r *http.Request) {
 	username := r.Context().Value("username").(string)
 
 	w.WriteHeader(http.StatusOK)
