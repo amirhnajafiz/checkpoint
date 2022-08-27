@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,30 +8,32 @@ import (
 	"github.com/amirhnajafiz/checkpoint/internal/jwt"
 )
 
-func Login(w http.ResponseWriter, r *http.Request) {
+func LoginUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	response := make(map[string]string)
 	token, err := jwt.GenerateToken(username + password)
-
-	response["token"] = token
-
 	if err != nil {
-		response["token"] = "nil"
+		w.WriteHeader(http.StatusInternalServerError)
+
+		_, _ = fmt.Fprint(w, err.Error())
 	}
 
-	_ = json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, _ = fmt.Fprintf(w, "token:\n%s", token)
 }
 
-func Register(w http.ResponseWriter, r *http.Request) {
+func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
+	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprint(w, username+":"+password)
 }
 
-func GetData(w http.ResponseWriter, r *http.Request) {
-	username := r.FormValue("username")
+func GetUserData(w http.ResponseWriter, r *http.Request) {
+	username := r.Context().Value("username").(string)
+
+	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprint(w, strings.ToUpper(username))
 }
