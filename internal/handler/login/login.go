@@ -2,7 +2,7 @@ package login
 
 import (
 	"encoding/json"
-	"github.com/amirhnajafiz/checkpoint/internal/jsonwebtoken"
+	"github.com/amirhnajafiz/checkpoint/internal/jwt"
 	"net/http"
 )
 
@@ -17,7 +17,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 func HandleLogin(username string, password string) map[string]string {
 	response := make(map[string]string)
-	token, err := jsonwebtoken.GenerateToken(username + password)
+	token, err := jwt.GenerateToken(username + password)
 
 	response["Token"] = token
 
