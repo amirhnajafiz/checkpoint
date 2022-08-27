@@ -1,20 +1,19 @@
 package server
 
 import (
-	"github.com/amirhnajafiz/checkpoint/internal/http/handler/login"
-	"github.com/amirhnajafiz/checkpoint/internal/http/handler/sign_in"
-	"github.com/amirhnajafiz/checkpoint/internal/http/handler/user_data"
-	"github.com/amirhnajafiz/checkpoint/internal/http/middleware"
 	"log"
 	"net/http"
+
+	"github.com/amirhnajafiz/checkpoint/internal/http/handler"
+	"github.com/amirhnajafiz/checkpoint/internal/http/middleware"
 )
 
 func HandleRequests() {
 	// Auth routes
-	http.HandleFunc("/api/login", login.Login)
-	http.HandleFunc("/api/register", sign_in.Register)
+	http.HandleFunc("/api/login", handler.Login)
+	http.HandleFunc("/api/register", handler.Register)
 	// Web routes
-	http.Handle("/api/user", middleware.Auth(user_data.GetData))
+	http.Handle("/api/user", middleware.Auth(handler.GetData))
 
 	log.Fatal(http.ListenAndServe(":5001", nil))
 }
