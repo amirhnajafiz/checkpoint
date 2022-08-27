@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -9,20 +10,22 @@ import (
 
 func Auth(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header["token"] != nil {
-			token, err := jwt.ParseToken(r.Header["Token"][0])
+		if value, ok := r.Header["token"]; ok {
+			token, err := jwt.ParseToken(value[0])
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
-
 				_, err = fmt.Fprintf(w, err.Error())
 			}
 
 			if token.Valid {
+				ctx := context.WithValue(context.Background(), "username", r.FormValue("username"))
+
+				r.WithContext(ctx)
+
 				endpoint(w, r)
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-
 			_, _ = fmt.Fprintf(w, "Not authorized")
 		}
 	})
