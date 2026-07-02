@@ -1,6 +1,6 @@
 module github.com/amirhnajafiz/checkpoint
 
-go 1.17
+go 1.26.3
 
 require (
 	github.com/airbrake/gobrake/v5 v5.2.0

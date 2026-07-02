@@ -19,4 +19,3 @@ Services will use the services API to validate their tokens.
     - Binding: role_id, account_id
 * [ ] Database migrations
 * [ ] Simple user interface
-
