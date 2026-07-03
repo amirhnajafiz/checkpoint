@@ -2,7 +2,6 @@
 
 --- Users table
 CREATE TABLE users (
-    id         SERIAL PRIMARY KEY,
     email      TEXT PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
