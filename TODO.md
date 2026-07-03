@@ -11,12 +11,18 @@ Services will use the services API to validate their tokens.
     - Account: id, name, description, workspace_id
     - Account Roles: role_id, account_id
 * [X] Database migrations
-* [ ] Database ORM (CRUD)
-* [ ] Base HTTP service
-    - /api/users [POST, GET]
+* [X] Database ORM (CRUD)
+* [X] Base HTTP service (using Echo)
+    - /api/users [POST]
+      - POST users gets email and redirects to Google OAuth, creates a new user if not exists
     - /api/services [POST, PUT, GET]
+      - FUTURE
     - /api/workspace [POST, PUT, GET, DEL]
     - /api/roles [POST, PUT, GET, DEL]
     - /api/accounts [POST, PUT, GET, DEL]
     - /api/role-bindings [POST, PUT, GET, DEL]
-* [ ] Simple user interface
+* [ ] Simple user interface (using Go tmpl)
+* [ ] Zap JSON format logs
+* [ ] OTel tracing
+* [ ] Prometheus metrics
+* [ ] Dockerfile + Compose deployment
