@@ -72,7 +72,7 @@ func appliedVersions(conn *sql.DB) (map[int64]bool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query applied migrations: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	applied := make(map[int64]bool)
 	for rows.Next() {

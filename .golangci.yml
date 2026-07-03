@@ -1,0 +1,23 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck      # unchecked errors
+    - govet         # go vet analyzers
+    - ineffassign   # ineffectual assignments
+    - staticcheck   # broad static analysis
+    - unused        # unused code
+    - misspell      # common misspellings
+  exclusions:
+    # Generated sqlc code should not be linted.
+    generated: lax
+    paths:
+      - internal/models
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

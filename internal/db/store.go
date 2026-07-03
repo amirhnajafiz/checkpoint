@@ -8,8 +8,8 @@ import (
 	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
 
-// Store is the single entry point future components (HTTP handlers, services,
-// ...) use to talk to the database. It embeds the sqlc-generated *models.Queries
+// Store is the single entry point future components
+// use to talk to the database. It embeds the sqlc-generated *models.Queries
 // so every CRUD method is available directly on the Store, while keeping the
 // underlying *sql.DB around so multiple queries can be composed atomically.
 type Store struct {
@@ -36,7 +36,7 @@ func (s *Store) ExecTx(ctx context.Context, fn func(*models.Queries) error) erro
 		return fmt.Errorf("begin tx: %w", err)
 	}
 
-	if err := fn(s.Queries.WithTx(tx)); err != nil {
+	if err := fn(s.WithTx(tx)); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
 			return fmt.Errorf("tx failed: %v, rollback failed: %w", err, rbErr)
 		}
