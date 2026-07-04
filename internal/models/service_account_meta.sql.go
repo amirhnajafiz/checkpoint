@@ -10,6 +10,22 @@ import (
 	"database/sql"
 )
 
+const addServiceAccountUsage = `-- name: AddServiceAccountUsage :exec
+UPDATE service_account_meta
+SET usage = usage + $2, last_used = NOW()
+WHERE account_id = $1
+`
+
+type AddServiceAccountUsageParams struct {
+	AccountID int32 `json:"account_id"`
+	Usage     int64 `json:"usage"`
+}
+
+func (q *Queries) AddServiceAccountUsage(ctx context.Context, arg AddServiceAccountUsageParams) error {
+	_, err := q.db.ExecContext(ctx, addServiceAccountUsage, arg.AccountID, arg.Usage)
+	return err
+}
+
 const createServiceAccountMeta = `-- name: CreateServiceAccountMeta :one
 INSERT INTO service_account_meta (account_id)
 VALUES ($1)
@@ -47,18 +63,19 @@ func (q *Queries) GetServiceAccountMeta(ctx context.Context, accountID int32) (S
 
 const updateServiceAccountMeta = `-- name: UpdateServiceAccountMeta :one
 UPDATE service_account_meta
-SET last_used = $1, usage = usage + $2
+SET last_used = $2, usage = usage + $3
 WHERE account_id = $1
 RETURNING account_id, last_used, usage
 `
 
 type UpdateServiceAccountMetaParams struct {
-	LastUsed sql.NullTime `json:"last_used"`
-	Usage    int64        `json:"usage"`
+	AccountID int32        `json:"account_id"`
+	LastUsed  sql.NullTime `json:"last_used"`
+	Usage     int64        `json:"usage"`
 }
 
 func (q *Queries) UpdateServiceAccountMeta(ctx context.Context, arg UpdateServiceAccountMetaParams) (ServiceAccountMetum, error) {
-	row := q.db.QueryRowContext(ctx, updateServiceAccountMeta, arg.LastUsed, arg.Usage)
+	row := q.db.QueryRowContext(ctx, updateServiceAccountMeta, arg.AccountID, arg.LastUsed, arg.Usage)
 	var i ServiceAccountMetum
 	err := row.Scan(&i.AccountID, &i.LastUsed, &i.Usage)
 	return i, err

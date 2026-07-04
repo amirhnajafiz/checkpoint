@@ -370,7 +370,27 @@ func (h *Handler) validateService(c echo.Context) error {
 		return err
 	}
 
+	// Report the successful validation to the usage daemon (non-blocking); it
+	// batches counts and flushes them to the database periodically.
+	h.usage.Record(int32(accountID))
+
 	return c.JSON(http.StatusOK, newServiceClaimsResponse(int32(accountID), claims))
+}
+
+// healthCheck returns the health daemon's latest snapshot of dependency health,
+// with a 503 status when any dependency is unhealthy.
+func (h *Handler) healthCheck(c echo.Context) error {
+	snapshot, err := h.health.Health(c.Request().Context())
+	if err != nil {
+		return err
+	}
+
+	status := http.StatusOK
+	if !snapshot.Healthy {
+		status = http.StatusServiceUnavailable
+	}
+
+	return c.JSON(status, snapshot)
 }
 
 // ownedAccount fetches a service account and confirms it belongs to the caller,

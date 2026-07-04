@@ -35,3 +35,8 @@ oauth:
   client_id: ""
   client_secret: ""
   redirect_url: "http://localhost:5000/api/users/callback"
+
+daemons:
+  usage_flush_interval: "10s"
+  usage_buffer_size: 1024
+  health_ping_interval: "15s"

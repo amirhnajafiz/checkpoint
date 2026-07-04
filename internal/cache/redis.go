@@ -38,6 +38,14 @@ func (c *Client) Close() error {
 	return c.rdb.Close()
 }
 
+// Ping verifies the Redis connection is responsive; used by the health daemon.
+func (c *Client) Ping(ctx context.Context) error {
+	if err := c.rdb.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("ping redis: %w", err)
+	}
+	return nil
+}
+
 // serviceTokenKey is the Redis key holding a service account's current token.
 func serviceTokenKey(accountID int32) string {
 	return fmt.Sprintf("service:token:%d", accountID)

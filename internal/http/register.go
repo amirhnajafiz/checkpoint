@@ -8,6 +8,7 @@ import (
 
 	"github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
+	"github.com/amirhnajafiz/mayigoo/internal/daemons"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 )
 
@@ -17,12 +18,21 @@ type Handler struct {
 	jwtManager  *auth.JWTManager
 	googleOAuth *auth.GoogleOAuth
 	cache       *cache.Client
+	usage       *daemons.UsageDaemon
+	health      *daemons.HealthDaemon
 }
 
 // NewHandler builds a Handler backed by the store, JWT manager, Google OAuth
-// client, and token cache.
-func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAuth, tokenCache *cache.Client) *Handler {
-	return &Handler{store: store, jwtManager: jwtm, googleOAuth: googleoa, cache: tokenCache}
+// client, token cache, and the background daemons it talks to over channels.
+func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAuth, tokenCache *cache.Client, usage *daemons.UsageDaemon, health *daemons.HealthDaemon) *Handler {
+	return &Handler{
+		store:       store,
+		jwtManager:  jwtm,
+		googleOAuth: googleoa,
+		cache:       tokenCache,
+		usage:       usage,
+		health:      health,
+	}
 }
 
 // Register configures middlewares, the request validator, the JSON error
@@ -48,6 +58,9 @@ func (h *Handler) Register(e *echo.Echo) {
 	e.GET("/app", h.appPage)
 
 	api := e.Group("/api")
+
+	// Health: the latest dependency-health snapshot from the health daemon (public).
+	api.GET("/health", h.healthCheck)
 
 	// Users: Google OAuth login flow (public).
 	users := api.Group("/users")

@@ -17,8 +17,8 @@ Services will use the services API to validate their tokens.
     - /api/services [POST, PUT, GET]
       - FUTURE
     - /api/accounts [POST, PUT, GET, DEL]
-* [ ] Simple user interface (using Go tmpl)
+* [X] Simple user interface (using Go tmpl)
 * [ ] Zap JSON format logs
 * [ ] OTel tracing
 * [ ] Prometheus metrics
-* [ ] Dockerfile + Compose deployment
+* [X] Dockerfile + Compose deployment

@@ -1,14 +1,23 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
 	"github.com/amirhnajafiz/mayigoo/internal/config"
+	"github.com/amirhnajafiz/mayigoo/internal/daemons"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 	httpapi "github.com/amirhnajafiz/mayigoo/internal/http"
 )
@@ -37,6 +46,8 @@ func main() {
 	}
 	defer func() { _ = tokenCache.Close() }()
 
+	store := db.NewStore(conn)
+
 	// Auth: JWT signer and Google OAuth client.
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.TTL)
 	googleOAuth := auth.NewGoogleOAuth(cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.RedirectURL)
@@ -44,15 +55,54 @@ func main() {
 	// Google OAuth client, or Google returns redirect_uri_mismatch.
 	log.Printf("google oauth redirect_uri: %q", cfg.Google.RedirectURL)
 
-	// HTTP: wire the handler and start Echo.
-	handler := httpapi.NewHandler(db.NewStore(conn), jwtManager, googleOAuth, tokenCache)
+	// Daemons: aggregate validation usage and monitor dependency health.
+	usageDaemon := daemons.NewUsageDaemon(store, cfg.Daemons.UsageFlushInterval, cfg.Daemons.UsageBufferSize)
+	healthDaemon := daemons.NewHealthDaemon(cfg.Daemons.HealthPingInterval,
+		daemons.Checker{Name: "postgres", Check: conn.PingContext},
+		daemons.Checker{Name: "redis", Check: tokenCache.Ping},
+	)
+	manager := daemons.NewManager(usageDaemon, healthDaemon)
+
+	// HTTP: wire the handler (which talks to the daemons over channels).
+	handler := httpapi.NewHandler(store, jwtManager, googleOAuth, tokenCache, usageDaemon, healthDaemon)
 
 	e := echo.New()
 	e.HideBanner = true
 	handler.Register(e)
 
-	log.Printf("mayigoo listening on %s:%d", cfg.HTTP.Addr, cfg.HTTP.Port)
-	if err := e.Start(fmt.Sprintf("%s:%d", cfg.HTTP.Addr, cfg.HTTP.Port)); err != nil {
+	// A single context cancelled on SIGINT/SIGTERM drives shutdown of both the
+	// daemons and the HTTP server.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Addr, cfg.HTTP.Port)
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	// Background daemons; the manager stops them all when gctx is cancelled.
+	g.Go(func() error {
+		return manager.Run(gctx)
+	})
+
+	// HTTP server with graceful shutdown tied to the group context.
+	g.Go(func() error {
+		go func() {
+			<-gctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = e.Shutdown(shutdownCtx)
+		}()
+
+		log.Printf("mayigoo listening on %s", addr)
+		if err := e.Start(addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatalf("server: %v", err)
 	}
+
+	log.Print("shutdown complete")
 }

@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AddServiceAccountUsage(ctx context.Context, arg AddServiceAccountUsageParams) error
 	CountUsers(ctx context.Context) (int64, error)
 	CreateServiceAccount(ctx context.Context, arg CreateServiceAccountParams) (ServiceAccount, error)
 	CreateServiceAccountMeta(ctx context.Context, accountID int32) (ServiceAccountMetum, error)

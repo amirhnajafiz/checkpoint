@@ -42,5 +42,10 @@ func Default() Config {
 			ClientSecret: "",
 			RedirectURL:  "http://localhost:5000/api/users/callback",
 		},
+		Daemons: DaemonsConfig{
+			UsageFlushInterval: 10 * time.Second,
+			UsageBufferSize:    1024,
+			HealthPingInterval: 15 * time.Second,
+		},
 	}
 }

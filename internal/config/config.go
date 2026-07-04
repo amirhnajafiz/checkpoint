@@ -31,11 +31,12 @@ const (
 
 // Config is the fully-resolved application configuration.
 type Config struct {
-	HTTP   HTTPConfig   `koanf:"http"`
-	DB     db.Config    `koanf:"db"`
-	Redis  cache.Config `koanf:"redis"`
-	JWT    JWTConfig    `koanf:"jwt"`
-	Google GoogleConfig `koanf:"oauth"`
+	HTTP    HTTPConfig    `koanf:"http"`
+	DB      db.Config     `koanf:"db"`
+	Redis   cache.Config  `koanf:"redis"`
+	JWT     JWTConfig     `koanf:"jwt"`
+	Google  GoogleConfig  `koanf:"oauth"`
+	Daemons DaemonsConfig `koanf:"daemons"`
 }
 
 // HTTPConfig configures the HTTP server.
@@ -55,6 +56,18 @@ type GoogleConfig struct {
 	ClientID     string `koanf:"client_id"`
 	ClientSecret string `koanf:"client_secret"`
 	RedirectURL  string `koanf:"redirect_url"`
+}
+
+// DaemonsConfig tunes the background daemons.
+type DaemonsConfig struct {
+	// UsageFlushInterval is how often batched validation events are written to
+	// the database.
+	UsageFlushInterval time.Duration `koanf:"usage_flush_interval"`
+	// UsageBufferSize is the capacity of the validation-event channel; events
+	// are dropped rather than blocking the request path when it is full.
+	UsageBufferSize int `koanf:"usage_buffer_size"`
+	// HealthPingInterval is how often dependency health is probed.
+	HealthPingInterval time.Duration `koanf:"health_ping_interval"`
 }
 
 // Load resolves configuration from all sources in precedence order and
