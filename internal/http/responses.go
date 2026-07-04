@@ -56,8 +56,11 @@ type serviceAccountResponse struct {
 	UserEmail   string            `json:"user_email"`
 	Usage       int               `json:"usage"`
 	KV          map[string]string `json:"kv"`
-	CreatedAt   time.Time         `json:"created_at"`
-	LastUsed    time.Time         `json:"last_used"`
+	// TTL is the account's configured token lifetime (e.g. "24h"); empty means
+	// it uses the default TTL.
+	TTL       string    `json:"ttl"`
+	CreatedAt time.Time `json:"created_at"`
+	LastUsed  time.Time `json:"last_used"`
 }
 
 // newServiceAccountResponse builds a response from a list row (account joined
@@ -71,6 +74,7 @@ func newServiceAccountResponse(a models.ListUserServiceAccountsRow, kv map[strin
 		UserEmail:   a.UserEmail,
 		Usage:       int(a.Usage),
 		KV:          orEmptyLabels(kv),
+		TTL:         ttlDisplay(a.TtlSeconds),
 		CreatedAt:   a.CreatedAt,
 		LastUsed:    nullTime(a.LastUsed),
 	}
@@ -95,6 +99,7 @@ func serviceAccountResponseFrom(a models.ServiceAccount, m models.ServiceAccount
 		UserEmail:   a.UserEmail,
 		Usage:       int(m.Usage),
 		KV:          orEmptyLabels(kv),
+		TTL:         ttlDisplay(a.TtlSeconds),
 		CreatedAt:   a.CreatedAt,
 		LastUsed:    nullTime(m.LastUsed),
 	}

@@ -99,6 +99,8 @@
           <input type="checkbox" id="active" checked>
           <label for="active" style="margin:0;">Active</label>
         </div>
+        <label for="ttl">Token TTL — e.g. 24h, 90m (leave blank for the default)</label>
+        <input type="text" id="ttl" placeholder="24h">
         <label>Labels — key / value pairs baked into the token</label>
         <div id="kvEditor"></div>
         <button class="btn ghost sm" type="button" id="addKv" style="margin-bottom:16px;">+ Add label</button>
@@ -249,6 +251,7 @@
           '<div class="meta">' +
             '<span>ID: ' + a.id + '</span>' +
             '<span>Usage: ' + (a.usage || 0) + '</span>' +
+            '<span>TTL: ' + (a.ttl || "default") + '</span>' +
             '<span>Last used: ' + fmtDate(a.last_used) + '</span>' +
           '</div>' +
           (chips ? '<div class="chips">' + chips + '</div>' : "") +
@@ -277,6 +280,7 @@
       document.getElementById("name").value = a.name;
       document.getElementById("description").value = a.description;
       document.getElementById("active").checked = a.active;
+      document.getElementById("ttl").value = a.ttl || "";
       populateKV(a.kv);
       document.getElementById("formTitle").textContent = "Edit service account #" + a.id;
       document.getElementById("submitBtn").textContent = "Save changes";
@@ -321,6 +325,7 @@
         name: document.getElementById("name").value.trim(),
         description: document.getElementById("description").value.trim(),
         active: document.getElementById("active").checked,
+        ttl: document.getElementById("ttl").value.trim(),
         kv: collectKV()
       });
       const res = id

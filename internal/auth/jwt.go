@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -20,6 +22,7 @@ const (
 type JWTClaims struct {
 	JWTKind JWTKind           `json:"kind"`
 	Labels  map[string]string `json:"labels,omitempty"`
+	Salt    string            `json:"slt,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -44,14 +47,26 @@ func (m *JWTManager) TTL() time.Duration {
 // subject is the user's email; for a service token it is the service account id
 // and labels carries the account's key/value pairs. labels may be nil.
 func (m *JWTManager) Generate(subject string, kind JWTKind, labels map[string]string) (string, error) {
+	return m.GenerateWithTTL(subject, kind, labels, m.ttl)
+}
+
+// GenerateWithTTL is like Generate but uses an explicit lifetime, letting a
+// caller override the default TTL per token (e.g. a per-account TTL).
+func (m *JWTManager) GenerateWithTTL(subject string, kind JWTKind, labels map[string]string, ttl time.Duration) (string, error) {
+	salt, err := randomSalt()
+	if err != nil {
+		return "", err
+	}
+
 	now := time.Now()
 	claims := JWTClaims{
 		JWTKind: kind,
 		Labels:  labels,
+		Salt:    salt,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   subject,
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(m.ttl)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
 	}
 
@@ -61,6 +76,17 @@ func (m *JWTManager) Generate(subject string, kind JWTKind, labels map[string]st
 	}
 
 	return signed, nil
+}
+
+// randomSalt returns a cryptographically-random hex string used to make every
+// generated token unique.
+func randomSalt() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate salt: %w", err)
+	}
+
+	return hex.EncodeToString(b), nil
 }
 
 // Parse validates a signed token and returns its claims.

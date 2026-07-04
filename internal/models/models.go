@@ -15,12 +15,13 @@ type SchemaMigration struct {
 }
 
 type ServiceAccount struct {
-	ID          int32     `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Active      bool      `json:"active"`
-	UserEmail   string    `json:"user_email"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          int32         `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Active      bool          `json:"active"`
+	UserEmail   string        `json:"user_email"`
+	CreatedAt   time.Time     `json:"created_at"`
+	TtlSeconds  sql.NullInt64 `json:"ttl_seconds"`
 }
 
 type ServiceAccountKv struct {

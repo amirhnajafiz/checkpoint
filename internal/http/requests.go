@@ -8,6 +8,9 @@ type createServiceAccountRequest struct {
 	Active *bool `json:"active"`
 	// KV are the key/value labels attached to the account (may be empty).
 	KV map[string]string `json:"kv"`
+	// TTL is an optional per-account token lifetime as a duration string
+	// (e.g. "24h", "90m"); empty falls back to the default TTL.
+	TTL string `json:"ttl"`
 }
 
 // updateServiceAccountRequest is the JSON body for PUT /api/accounts/:id.
@@ -18,4 +21,7 @@ type updateServiceAccountRequest struct {
 	Active *bool `json:"active"`
 	// KV replaces the account's labels; an empty map clears them.
 	KV map[string]string `json:"kv"`
+	// TTL is an optional per-account token lifetime as a duration string
+	// (e.g. "24h", "90m"); empty falls back to the default TTL.
+	TTL string `json:"ttl"`
 }

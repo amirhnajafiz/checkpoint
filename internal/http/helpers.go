@@ -2,9 +2,11 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -37,6 +39,22 @@ func bindAndValidate(c echo.Context, req any) error {
 		return err
 	}
 	return nil
+}
+
+// parseTTL converts an optional duration string (e.g. "24h", "90m") from a
+// request into a nullable seconds value for storage. An empty string yields a
+// NULL, meaning the account falls back to the default TTL.
+func parseTTL(s string) (sql.NullInt64, error) {
+	if strings.TrimSpace(s) == "" {
+		return sql.NullInt64{}, nil
+	}
+
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		return sql.NullInt64{}, echo.NewHTTPError(http.StatusBadRequest, "invalid ttl; use a positive duration like 24h or 90m")
+	}
+
+	return sql.NullInt64{Int64: int64(d.Seconds()), Valid: true}, nil
 }
 
 // pathID reads an integer path parameter (e.g. /:id) as an int32.

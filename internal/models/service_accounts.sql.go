@@ -12,16 +12,17 @@ import (
 )
 
 const createServiceAccount = `-- name: CreateServiceAccount :one
-INSERT INTO service_accounts (name, description, active, user_email)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, description, active, user_email, created_at
+INSERT INTO service_accounts (name, description, active, user_email, ttl_seconds)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, description, active, user_email, created_at, ttl_seconds
 `
 
 type CreateServiceAccountParams struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Active      bool   `json:"active"`
-	UserEmail   string `json:"user_email"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Active      bool          `json:"active"`
+	UserEmail   string        `json:"user_email"`
+	TtlSeconds  sql.NullInt64 `json:"ttl_seconds"`
 }
 
 func (q *Queries) CreateServiceAccount(ctx context.Context, arg CreateServiceAccountParams) (ServiceAccount, error) {
@@ -30,6 +31,7 @@ func (q *Queries) CreateServiceAccount(ctx context.Context, arg CreateServiceAcc
 		arg.Description,
 		arg.Active,
 		arg.UserEmail,
+		arg.TtlSeconds,
 	)
 	var i ServiceAccount
 	err := row.Scan(
@@ -39,6 +41,7 @@ func (q *Queries) CreateServiceAccount(ctx context.Context, arg CreateServiceAcc
 		&i.Active,
 		&i.UserEmail,
 		&i.CreatedAt,
+		&i.TtlSeconds,
 	)
 	return i, err
 }
@@ -54,7 +57,7 @@ func (q *Queries) DeleteServiceAccount(ctx context.Context, id int32) error {
 }
 
 const getServiceAccount = `-- name: GetServiceAccount :one
-SELECT id, name, description, active, user_email, created_at FROM service_accounts
+SELECT id, name, description, active, user_email, created_at, ttl_seconds FROM service_accounts
 WHERE id = $1
 `
 
@@ -68,27 +71,29 @@ func (q *Queries) GetServiceAccount(ctx context.Context, id int32) (ServiceAccou
 		&i.Active,
 		&i.UserEmail,
 		&i.CreatedAt,
+		&i.TtlSeconds,
 	)
 	return i, err
 }
 
 const listUserServiceAccounts = `-- name: ListUserServiceAccounts :many
-SELECT id, name, description, active, user_email, created_at, account_id, last_used, usage
+SELECT id, name, description, active, user_email, created_at, ttl_seconds, account_id, last_used, usage
 FROM service_accounts as sa JOIN service_account_meta as sam ON sa.id = sam.account_id
 WHERE user_email = $1
 ORDER BY id
 `
 
 type ListUserServiceAccountsRow struct {
-	ID          int32        `json:"id"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Active      bool         `json:"active"`
-	UserEmail   string       `json:"user_email"`
-	CreatedAt   time.Time    `json:"created_at"`
-	AccountID   int32        `json:"account_id"`
-	LastUsed    sql.NullTime `json:"last_used"`
-	Usage       int64        `json:"usage"`
+	ID          int32         `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Active      bool          `json:"active"`
+	UserEmail   string        `json:"user_email"`
+	CreatedAt   time.Time     `json:"created_at"`
+	TtlSeconds  sql.NullInt64 `json:"ttl_seconds"`
+	AccountID   int32         `json:"account_id"`
+	LastUsed    sql.NullTime  `json:"last_used"`
+	Usage       int64         `json:"usage"`
 }
 
 func (q *Queries) ListUserServiceAccounts(ctx context.Context, userEmail string) ([]ListUserServiceAccountsRow, error) {
@@ -107,6 +112,7 @@ func (q *Queries) ListUserServiceAccounts(ctx context.Context, userEmail string)
 			&i.Active,
 			&i.UserEmail,
 			&i.CreatedAt,
+			&i.TtlSeconds,
 			&i.AccountID,
 			&i.LastUsed,
 			&i.Usage,
@@ -126,16 +132,17 @@ func (q *Queries) ListUserServiceAccounts(ctx context.Context, userEmail string)
 
 const updateServiceAccount = `-- name: UpdateServiceAccount :one
 UPDATE service_accounts
-SET name = $2, description = $3, active = $4
+SET name = $2, description = $3, active = $4, ttl_seconds = $5
 WHERE id = $1
-RETURNING id, name, description, active, user_email, created_at
+RETURNING id, name, description, active, user_email, created_at, ttl_seconds
 `
 
 type UpdateServiceAccountParams struct {
-	ID          int32  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Active      bool   `json:"active"`
+	ID          int32         `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Active      bool          `json:"active"`
+	TtlSeconds  sql.NullInt64 `json:"ttl_seconds"`
 }
 
 func (q *Queries) UpdateServiceAccount(ctx context.Context, arg UpdateServiceAccountParams) (ServiceAccount, error) {
@@ -144,6 +151,7 @@ func (q *Queries) UpdateServiceAccount(ctx context.Context, arg UpdateServiceAcc
 		arg.Name,
 		arg.Description,
 		arg.Active,
+		arg.TtlSeconds,
 	)
 	var i ServiceAccount
 	err := row.Scan(
@@ -153,6 +161,7 @@ func (q *Queries) UpdateServiceAccount(ctx context.Context, arg UpdateServiceAcc
 		&i.Active,
 		&i.UserEmail,
 		&i.CreatedAt,
+		&i.TtlSeconds,
 	)
 	return i, err
 }

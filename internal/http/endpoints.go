@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -97,15 +99,21 @@ func (h *Handler) createAccount(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	labels := orEmptyLabels(req.KV)
+	active := boolOrDefault(req.Active, true)
+	ttlSeconds, err := parseTTL(req.TTL)
+	if err != nil {
+		return err
+	}
 
 	var account models.ServiceAccount
 	var meta models.ServiceAccountMetum
-	err := h.store.ExecTx(ctx, func(q *models.Queries) error {
+	err = h.store.ExecTx(ctx, func(q *models.Queries) error {
 		a, err := q.CreateServiceAccount(ctx, models.CreateServiceAccountParams{
 			Name:        req.Name,
 			Description: req.Description,
-			Active:      boolOrDefault(req.Active, true),
+			Active:      active,
 			UserEmail:   userEmail(c),
+			TtlSeconds:  ttlSeconds,
 		})
 		if err != nil {
 			return err
@@ -124,8 +132,9 @@ func (h *Handler) createAccount(c echo.Context) error {
 		return err
 	}
 
-	// Mint a JWT for the service account (carrying its labels) and cache it.
-	serviceToken, err := h.issueServiceToken(ctx, account.ID, labels)
+	// Cache a fresh token only if the account is active; an inactive account
+	// has no usable token. The token lives for the account's TTL (or the default).
+	serviceToken, err := h.syncServiceToken(ctx, account.ID, active, labels, h.resolveTTL(account.TtlSeconds))
 	if err != nil {
 		return err
 	}
@@ -133,18 +142,43 @@ func (h *Handler) createAccount(c echo.Context) error {
 	return c.JSON(http.StatusCreated, newServiceAccountTokenResponse(serviceAccountResponseFrom(account, meta, labels), serviceToken))
 }
 
+// syncServiceToken reconciles the cached token with the account's active state.
+// An active account gets a freshly minted, cached token (rotating any previous
+// one) that lives for ttl; an inactive account has its cached token removed so
+// it can no longer validate. The returned token is empty for an inactive account.
+func (h *Handler) syncServiceToken(ctx context.Context, accountID int32, active bool, labels map[string]string, ttl time.Duration) (string, error) {
+	if !active {
+		if err := h.cache.DeleteServiceToken(ctx, accountID); err != nil {
+			return "", err
+		}
+		return "", nil
+	}
+
+	return h.issueServiceToken(ctx, accountID, labels, ttl)
+}
+
 // issueServiceToken mints a fresh JWT for a service account (embedding its
-// labels) and stores it in the cache (keyed by account id) so the issuer can
-// retrieve it later and the open validate endpoint can confirm it is current.
-func (h *Handler) issueServiceToken(ctx context.Context, accountID int32, labels map[string]string) (string, error) {
-	serviceToken, err := h.jwtManager.Generate(strconv.FormatInt(int64(accountID), 10), auth.JWTKindService, labels)
+// labels, valid for ttl) and stores it in the cache (keyed by account id, with a
+// matching expiry) so the issuer can retrieve it later and the open validate
+// endpoint can confirm it is current.
+func (h *Handler) issueServiceToken(ctx context.Context, accountID int32, labels map[string]string, ttl time.Duration) (string, error) {
+	serviceToken, err := h.jwtManager.GenerateWithTTL(strconv.FormatInt(int64(accountID), 10), auth.JWTKindService, labels, ttl)
 	if err != nil {
 		return "", err
 	}
-	if err := h.cache.SetServiceToken(ctx, accountID, serviceToken, h.jwtManager.TTL()); err != nil {
+	if err := h.cache.SetServiceToken(ctx, accountID, serviceToken, ttl); err != nil {
 		return "", err
 	}
 	return serviceToken, nil
+}
+
+// resolveTTL picks the token lifetime for an account: its per-account TTL when
+// set, otherwise the manager's default fallback TTL.
+func (h *Handler) resolveTTL(ttlSeconds sql.NullInt64) time.Duration {
+	if d, ok := ttlDuration(ttlSeconds); ok {
+		return d
+	}
+	return h.jwtManager.TTL()
 }
 
 // listAccounts returns the service accounts owned by the caller, each with its
@@ -218,6 +252,11 @@ func (h *Handler) updateAccount(c echo.Context) error {
 
 	ctx := c.Request().Context()
 	labels := orEmptyLabels(req.KV)
+	active := boolOrDefault(req.Active, true)
+	ttlSeconds, err := parseTTL(req.TTL)
+	if err != nil {
+		return err
+	}
 
 	var account models.ServiceAccount
 	err = h.store.ExecTx(ctx, func(q *models.Queries) error {
@@ -225,7 +264,8 @@ func (h *Handler) updateAccount(c echo.Context) error {
 			ID:          id,
 			Name:        req.Name,
 			Description: req.Description,
-			Active:      boolOrDefault(req.Active, true),
+			Active:      active,
+			TtlSeconds:  ttlSeconds,
 		})
 		if err != nil {
 			return err
@@ -242,9 +282,10 @@ func (h *Handler) updateAccount(c echo.Context) error {
 		return err
 	}
 
-	// Updating an account rotates its token: mint and cache a fresh one
-	// (with the updated labels), superseding the previous token.
-	serviceToken, err := h.issueServiceToken(ctx, id, labels)
+	// Reconcile the cached token with the new active state: an active account
+	// gets a freshly rotated token (with the updated labels and TTL), while an
+	// inactive account has its token evicted so it stops validating.
+	serviceToken, err := h.syncServiceToken(ctx, id, active, labels, h.resolveTTL(account.TtlSeconds))
 	if err != nil {
 		return err
 	}
