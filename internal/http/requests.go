@@ -15,3 +15,8 @@ type updateServiceAccountRequest struct {
 	// Active is optional; a nil value keeps the account active.
 	Active *bool `json:"active"`
 }
+
+// validateServiceRequest is the JSON body for POST /api/services/validate.
+type validateServiceRequest struct {
+	Token string `json:"token" validate:"required"`
+}

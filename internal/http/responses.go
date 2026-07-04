@@ -3,6 +3,7 @@ package http
 import (
 	"time"
 
+	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
 
@@ -15,6 +16,32 @@ type errorResponse struct {
 // successful Google login.
 type loginResponse struct {
 	Token string `json:"token"`
+}
+
+// tokenResponse carries a single token back to the caller (e.g. the cached
+// service token retrieved by its issuer).
+type tokenResponse struct {
+	Token string `json:"token"`
+}
+
+// serviceClaimsResponse is the unmarshaled result of validating a service
+// token at the open validate endpoint.
+type serviceClaimsResponse struct {
+	AccountID int32     `json:"account_id"`
+	Kind      string    `json:"kind"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func newServiceClaimsResponse(accountID int32, claims *oauth.JWTClaims) serviceClaimsResponse {
+	var expiresAt time.Time
+	if claims.ExpiresAt != nil {
+		expiresAt = claims.ExpiresAt.Time
+	}
+	return serviceClaimsResponse{
+		AccountID: accountID,
+		Kind:      string(claims.JWTKind),
+		ExpiresAt: expiresAt,
+	}
 }
 
 // serviceAccountResponse is the API view of a service account together with its

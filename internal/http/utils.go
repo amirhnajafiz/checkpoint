@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-
-	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
 
 // bindAndValidate binds the JSON body into req and runs struct validation,
@@ -74,19 +72,4 @@ func randomState() (string, error) {
 func userEmail(c echo.Context) string {
 	email, _ := c.Get(contextUserEmail).(string)
 	return email
-}
-
-// ownedAccount fetches a service account and confirms it belongs to the caller,
-// returning 404 otherwise so account existence is not leaked across users.
-func (h *Handler) ownedAccount(c echo.Context, id int32) (models.ServiceAccount, error) {
-	account, err := h.store.GetServiceAccount(c.Request().Context(), id)
-	if err != nil {
-		return models.ServiceAccount{}, err
-	}
-
-	if account.UserEmail != userEmail(c) {
-		return models.ServiceAccount{}, echo.NewHTTPError(http.StatusNotFound, "resource not found")
-	}
-
-	return account, nil
 }

@@ -32,6 +32,12 @@ func NewJWTManager(secret string, ttl time.Duration) *JWTManager {
 	return &JWTManager{secret: []byte(secret), ttl: ttl}
 }
 
+// TTL returns how long issued tokens remain valid; callers use it to expire
+// cached copies alongside the token.
+func (m *JWTManager) TTL() time.Duration {
+	return m.ttl
+}
+
 // Generate signs a token for the given subject and kind. For a user token the
 // subject is the user's email; for a service token it is the service account id.
 func (m *JWTManager) Generate(subject string, kind JWTKind) (string, error) {

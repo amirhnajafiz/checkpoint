@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
+	"github.com/amirhnajafiz/mayigoo/internal/cache"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 )
 
@@ -15,12 +16,13 @@ type Handler struct {
 	store       *db.Store
 	jwtManager  *oauth.JWTManager
 	googleOAuth *oauth.GoogleOAuth
+	cache       *cache.Client
 }
 
-// NewHandler builds a Handler backed by the store, JWT manager, and Google
-// OAuth client.
-func NewHandler(store *db.Store, jwtm *oauth.JWTManager, googleoa *oauth.GoogleOAuth) *Handler {
-	return &Handler{store: store, jwtManager: jwtm, googleOAuth: googleoa}
+// NewHandler builds a Handler backed by the store, JWT manager, Google OAuth
+// client, and token cache.
+func NewHandler(store *db.Store, jwtm *oauth.JWTManager, googleoa *oauth.GoogleOAuth, tokenCache *cache.Client) *Handler {
+	return &Handler{store: store, jwtManager: jwtm, googleOAuth: googleoa, cache: tokenCache}
 }
 
 // Register configures middlewares, the request validator, the JSON error
@@ -47,12 +49,17 @@ func (h *Handler) Register(e *echo.Echo) {
 	users.GET("/login", h.login)
 	users.GET("/callback", h.callback)
 
+	// Services: open endpoint to validate & unmarshal a service token.
+	services := api.Group("/services")
+	services.POST("/validate", h.validateService)
+
 	// Service accounts: authenticated and scoped to the caller.
 	accounts := api.Group("/accounts")
 	accounts.Use(h.authMiddleware)
 	accounts.POST("", h.createAccount)
 	accounts.GET("", h.listAccounts)
 	accounts.GET("/:id", h.getAccount)
+	accounts.GET("/:id/token", h.getAccountToken)
 	accounts.PUT("/:id", h.updateAccount)
 	accounts.DELETE("/:id", h.deleteAccount)
 }
