@@ -3,33 +3,9 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
-
-// Config holds everything required to reach a PostgreSQL instance.
-type Config struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Name     string
-	SSLMode  string
-
-	// connection pool tuning
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
-}
-
-// DSN renders the config as a libpq/pgx connection string.
-func (c Config) DSN() string {
-	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.Name, c.SSLMode,
-	)
-}
 
 // New opens a PostgreSQL connection pool using the pgx stdlib driver and
 // verifies connectivity with a ping. The returned sql.DB is the handle the

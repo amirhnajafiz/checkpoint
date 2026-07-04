@@ -30,21 +30,23 @@ services:
     ports:
       - "5000:5000"
     environment:
-      HTTP_ADDR: ":5000"
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_USER: mayigoo
-      DB_PASSWORD: mayigoo
-      DB_NAME: mayigoo
-      DB_SSLMODE: disable
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      JWT_TTL: 24h
+      # The app reads MAYIGOO_-prefixed environment variables (see internal/config).
+      # A double underscore separates sections; a single underscore is a word break.
+      MAYIGOO_HTTP__ADDR: ":5000"
+      MAYIGOO_DB__HOST: postgres
+      MAYIGOO_DB__PORT: "5432"
+      MAYIGOO_DB__USER: mayigoo
+      MAYIGOO_DB__PASSWORD: mayigoo
+      MAYIGOO_DB__NAME: mayigoo
+      MAYIGOO_DB__SSL_MODE: disable
+      MAYIGOO_REDIS__HOST: redis
+      MAYIGOO_REDIS__PORT: "6379"
+      MAYIGOO_JWT__SECRET: ${JWT__SECRET:-dev-secret-change-me}
+      MAYIGOO_JWT__TTL: 24h
       # Provide these via a .env file next to docker-compose.yml (see .env.example).
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-http://localhost:5000/api/users/callback}
+      MAYIGOO_OAUTH__CLIENT_ID: ${OAUTH__CLIENT_ID:-}
+      MAYIGOO_OAUTH__CLIENT_SECRET: ${OAUTH__CLIENT_SECRET:-}
+      MAYIGOO_OAUTH__REDIRECT_URL: ${OAUTH__REDIRECT_URL:-http://localhost:5000/api/users/callback}
     depends_on:
       postgres:
         condition: service_healthy
