@@ -7,7 +7,7 @@
 # MAYIGOO_OAUTH__CLIENT_ID -> oauth.client_id.
 
 http:
-  addr: ":5000"
+  addr: "localhost"
   port: 5000
 
 db:

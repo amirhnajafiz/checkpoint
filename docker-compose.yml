@@ -26,13 +26,14 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: build/Dockerfile
     ports:
       - "5000:5000"
     environment:
-      # The app reads MAYIGOO_-prefixed environment variables (see internal/config).
-      # A double underscore separates sections; a single underscore is a word break.
-      MAYIGOO_HTTP__ADDR: ":5000"
+      MAYIGOO_HTTP__ADDR: "localhost"
+      MAYIGOO_HTTP__PORT: 5000
       MAYIGOO_DB__HOST: postgres
       MAYIGOO_DB__PORT: "5432"
       MAYIGOO_DB__USER: mayigoo

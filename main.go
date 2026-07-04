@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -50,8 +51,8 @@ func main() {
 	e.HideBanner = true
 	handler.Register(e)
 
-	log.Printf("mayigoo listening on %s", cfg.HTTP.Addr)
-	if err := e.Start(cfg.HTTP.Addr); err != nil {
+	log.Printf("mayigoo listening on %s:%d", cfg.HTTP.Addr, cfg.HTTP.Port)
+	if err := e.Start(fmt.Sprintf("%s:%d", cfg.HTTP.Addr, cfg.HTTP.Port)); err != nil {
 		log.Fatalf("server: %v", err)
 	}
 }

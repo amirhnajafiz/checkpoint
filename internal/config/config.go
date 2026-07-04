@@ -1,11 +1,7 @@
-// Package config loads application settings, layering sources from lowest to
-// highest precedence: built-in defaults, an optional YAML file, an optional
-// .env file, and finally MAYIGOO_-prefixed environment variables.
 package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -21,8 +17,7 @@ import (
 )
 
 const (
-	// EnvPrefix is the required prefix for environment-variable overrides;
-	// e.g. MAYIGOO_DB__HOST maps to the "db.host" key.
+	// EnvPrefix is the required prefix for environment-variable overrides.
 	EnvPrefix = "MAYIGOO_"
 	// envConfigFile names an environment variable pointing at a YAML file.
 	envConfigFile = "MAYIGOO_CONFIG_FILE"
@@ -80,7 +75,7 @@ func Load() (*Config, error) {
 	}
 
 	// Optional .env file: keys are flat and case-insensitive, sections split on
-	// a double underscore (DB__HOST -> db.host, OAUTH__CLIENT_ID -> oauth.client_id).
+	// a double underscore.
 	if exists(dotEnvFile) {
 		if err := k.Load(file.Provider(dotEnvFile), dotenv.ParserEnv("", ".", nestKey)); err != nil {
 			return nil, fmt.Errorf("load .env: %w", err)
@@ -99,30 +94,6 @@ func Load() (*Config, error) {
 	if err := k.Unmarshal("", &cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
+
 	return &cfg, nil
-}
-
-// nestKey turns a flat env-style key into a dotted koanf path. A double
-// underscore separates sections while a single underscore is a word break
-// within a field name: DB__SSL_MODE -> db.ssl_mode, OAUTH__CLIENT_ID ->
-// oauth.client_id.
-func nestKey(s string) string {
-	return strings.ReplaceAll(strings.ToLower(s), "__", ".")
-}
-
-// yamlPath returns the YAML file to load: MAYIGOO_CONFIG_FILE if set, otherwise
-// config.yaml when it exists, otherwise "" (no YAML source).
-func yamlPath() string {
-	if p := os.Getenv(envConfigFile); p != "" {
-		return p
-	}
-	if exists(defaultConfigFile) {
-		return defaultConfigFile
-	}
-	return ""
-}
-
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }

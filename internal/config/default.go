@@ -13,7 +13,7 @@ import (
 func Default() Config {
 	return Config{
 		HTTP: HTTPConfig{
-			Addr: ":5000",
+			Addr: "localhost",
 			Port: 5000,
 		},
 		DB: db.Config{
