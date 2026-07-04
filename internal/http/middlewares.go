@@ -6,29 +6,11 @@ import (
 	"net/http"
 
 	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
 // contextUserEmail is the echo context key holding the authenticated user email.
 const contextUserEmail = "user_email"
-
-// requestValidator adapts go-playground/validator to the echo.Validator
-// interface so handlers can call c.Validate(req).
-type requestValidator struct {
-	validate *validator.Validate
-}
-
-func newValidator() *requestValidator {
-	return &requestValidator{validate: validator.New()}
-}
-
-func (v *requestValidator) Validate(i any) error {
-	if err := v.validate.Struct(i); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-	return nil
-}
 
 // authMiddleware requires a valid user JWT in the Authorization header and
 // stores the caller's email in the request context.

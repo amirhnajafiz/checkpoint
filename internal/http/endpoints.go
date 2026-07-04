@@ -146,23 +146,6 @@ func (h *Handler) issueServiceToken(ctx context.Context, accountID int32, labels
 	return serviceToken, nil
 }
 
-// setAccountKV replaces an account's key/value labels with the given map.
-func setAccountKV(ctx context.Context, q *models.Queries, accountID int32, kv map[string]string) error {
-	if err := q.DeleteServiceAccountKVByAccount(ctx, accountID); err != nil {
-		return err
-	}
-	for k, v := range kv {
-		if _, err := q.SetServiceAccountKV(ctx, models.SetServiceAccountKVParams{
-			AccountID: accountID,
-			Xkey:      k,
-			Xvalue:    v,
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // listAccounts returns the service accounts owned by the caller, each with its
 // labels.
 func (h *Handler) listAccounts(c echo.Context) error {

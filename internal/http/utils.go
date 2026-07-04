@@ -4,34 +4,8 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
-	"net/http"
-	"strconv"
-	"strings"
 	"time"
-
-	"github.com/labstack/echo/v4"
 )
-
-// bindAndValidate binds the JSON body into req and runs struct validation,
-// returning a 400 HTTPError on failure.
-func bindAndValidate(c echo.Context, req any) error {
-	if err := c.Bind(req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
-	}
-	if err := c.Validate(req); err != nil {
-		return err
-	}
-	return nil
-}
-
-// pathID reads an integer path parameter (e.g. /:id) as an int32.
-func pathID(c echo.Context, name string) (int32, error) {
-	v, err := strconv.ParseInt(c.Param(name), 10, 32)
-	if err != nil {
-		return 0, echo.NewHTTPError(http.StatusBadRequest, "invalid "+name)
-	}
-	return int32(v), nil
-}
 
 // boolOrDefault dereferences an optional request bool, using def when nil.
 func boolOrDefault(v *bool, def bool) bool {
@@ -49,16 +23,6 @@ func nullTime(t sql.NullTime) time.Time {
 	return time.Time{}
 }
 
-// bearerToken extracts the token from an "Authorization: Bearer <token>" header.
-func bearerToken(c echo.Context) string {
-	const prefix = "Bearer "
-	header := c.Request().Header.Get("Authorization")
-	if len(header) > len(prefix) && strings.EqualFold(header[:len(prefix)], prefix) {
-		return header[len(prefix):]
-	}
-	return ""
-}
-
 // randomState generates a random CSRF state value for the OAuth flow.
 func randomState() (string, error) {
 	buf := make([]byte, 16)
@@ -66,10 +30,4 @@ func randomState() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
-}
-
-// userEmail returns the authenticated user's email from the request context.
-func userEmail(c echo.Context) string {
-	email, _ := c.Get(contextUserEmail).(string)
-	return email
 }
