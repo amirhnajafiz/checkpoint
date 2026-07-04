@@ -5,39 +5,38 @@
 package models
 
 import (
+	"database/sql"
 	"time"
 )
-
-type Account struct {
-	ID          int32  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	WorkspaceID int64  `json:"workspace_id"`
-}
-
-type AccountRole struct {
-	RoleID    int64 `json:"role_id"`
-	AccountID int64 `json:"account_id"`
-}
-
-type Role struct {
-	ID          int32  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	WorkspaceID int64  `json:"workspace_id"`
-}
 
 type SchemaMigration struct {
 	Version   int64     `json:"version"`
 	AppliedAt time.Time `json:"applied_at"`
 }
 
+type ServiceAccount struct {
+	ID          int32     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Active      bool      `json:"active"`
+	UserEmail   string    `json:"user_email"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ServiceAccountKv struct {
+	ID        int32  `json:"id"`
+	AccountID int32  `json:"account_id"`
+	Xkey      string `json:"xkey"`
+	Xvalue    string `json:"xvalue"`
+}
+
+type ServiceAccountMetum struct {
+	AccountID int32        `json:"account_id"`
+	LastUsed  sql.NullTime `json:"last_used"`
+	Usage     int64        `json:"usage"`
+}
+
 type User struct {
 	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type Workspace struct {
-	ID        int32  `json:"id"`
-	UserEmail string `json:"user_email"`
 }

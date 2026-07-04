@@ -2,250 +2,149 @@ package http
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 
+	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
 
-// --- Users ---
+const oauthStateCookie = "oauth_state"
 
-func (h *Handler) createUser(c echo.Context) error {
-	var req createUserRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
-	}
+// --- Authentication ---
 
-	user, err := h.store.CreateUser(c.Request().Context(), req.Email)
+// login starts the Google OAuth flow: it stores a CSRF state in a cookie and
+// redirects the browser to Google's consent screen.
+func (h *Handler) login(c echo.Context) error {
+	state, err := randomState()
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, newUserResponse(user))
+	c.SetCookie(&http.Cookie{
+		Name:     oauthStateCookie,
+		Value:    state,
+		Path:     "/",
+		MaxAge:   300,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	return c.Redirect(http.StatusFound, h.googleOAuth.AuthCodeURL(state))
 }
 
-// --- Workspaces ---
-
-func (h *Handler) createWorkspace(c echo.Context) error {
-	var req createWorkspaceRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
+// callback completes the Google OAuth flow: it validates the state, exchanges
+// the code for the user's email, upserts the user, and returns a signed JWT.
+func (h *Handler) callback(c echo.Context) error {
+	cookie, err := c.Cookie(oauthStateCookie)
+	if err != nil || cookie.Value == "" || cookie.Value != c.QueryParam("state") {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid oauth state")
 	}
 
-	ws, err := h.store.CreateWorkspace(c.Request().Context(), req.UserEmail)
-	if err != nil {
-		return err
+	code := c.QueryParam("code")
+	if code == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing authorization code")
 	}
 
-	return c.JSON(http.StatusCreated, newWorkspaceResponse(ws))
-}
-
-// listWorkspaces returns all workspaces, or those of a user when the
-// ?user_email= query parameter is supplied.
-func (h *Handler) listWorkspaces(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	if email := c.QueryParam("user_email"); email != "" {
-		list, err := h.store.ListWorkspacesByUser(ctx, email)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, newWorkspaceResponses(list))
+	oauthToken, err := h.googleOAuth.Exchange(ctx, code)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "oauth code exchange failed")
 	}
 
-	list, err := h.store.ListWorkspaces(ctx)
+	email, err := h.googleOAuth.Email(ctx, oauthToken)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadGateway, "failed to resolve google account email")
+	}
+
+	user, err := h.store.UpsertUser(ctx, email)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, newWorkspaceResponses(list))
+	signed, err := h.jwtManager.Generate(user.Email, oauth.JWTKindUser)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, loginResponse{Token: signed})
 }
 
-func (h *Handler) getWorkspace(c echo.Context) error {
-	id, err := pathID(c, "id")
-	if err != nil {
-		return err
-	}
+// --- Service accounts (authenticated; scoped to the caller) ---
 
-	ws, err := h.store.GetWorkspace(c.Request().Context(), id)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, newWorkspaceResponse(ws))
-}
-
-func (h *Handler) updateWorkspace(c echo.Context) error {
-	id, err := pathID(c, "id")
-	if err != nil {
-		return err
-	}
-
-	var req updateWorkspaceRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
-	}
-
-	ws, err := h.store.UpdateWorkspace(c.Request().Context(), models.UpdateWorkspaceParams{
-		ID:        id,
-		UserEmail: req.UserEmail,
-	})
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, newWorkspaceResponse(ws))
-}
-
-func (h *Handler) deleteWorkspace(c echo.Context) error {
-	id, err := pathID(c, "id")
-	if err != nil {
-		return err
-	}
-
-	if err := h.store.DeleteWorkspace(c.Request().Context(), id); err != nil {
-		return err
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
-// --- Roles ---
-
-func (h *Handler) createRole(c echo.Context) error {
-	var req createRoleRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
-	}
-
-	role, err := h.store.CreateRole(c.Request().Context(), models.CreateRoleParams{
-		Name:        req.Name,
-		Description: req.Description,
-		WorkspaceID: req.WorkspaceID,
-	})
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusCreated, newRoleResponse(role))
-}
-
-// listRoles returns roles filtered by ?workspace_id= or ?account_id=. One of
-// the two filters is required.
-func (h *Handler) listRoles(c echo.Context) error {
-	ctx := c.Request().Context()
-
-	if accountID, ok, err := queryInt64(c, "account_id"); err != nil {
-		return err
-	} else if ok {
-		list, err := h.store.ListRolesByAccount(ctx, accountID)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, newRoleResponses(list))
-	}
-
-	workspaceID, ok, err := queryInt64(c, "workspace_id")
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "workspace_id or account_id query parameter is required")
-	}
-
-	list, err := h.store.ListRolesByWorkspace(ctx, workspaceID)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, newRoleResponses(list))
-}
-
-func (h *Handler) updateRole(c echo.Context) error {
-	id, err := pathID(c, "id")
-	if err != nil {
-		return err
-	}
-
-	var req updateRoleRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
-	}
-
-	role, err := h.store.UpdateRole(c.Request().Context(), models.UpdateRoleParams{
-		ID:          id,
-		Name:        req.Name,
-		Description: req.Description,
-	})
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, newRoleResponse(role))
-}
-
-func (h *Handler) deleteRole(c echo.Context) error {
-	id, err := pathID(c, "id")
-	if err != nil {
-		return err
-	}
-
-	if err := h.store.DeleteRole(c.Request().Context(), id); err != nil {
-		return err
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
-// --- Accounts ---
-
+// createAccount creates a service account owned by the caller, together with
+// its metadata row, then mints a service JWT for it.
 func (h *Handler) createAccount(c echo.Context) error {
-	var req createAccountRequest
+	var req createServiceAccountRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		return err
 	}
 
-	account, err := h.store.CreateAccount(c.Request().Context(), models.CreateAccountParams{
-		Name:        req.Name,
-		Description: req.Description,
-		WorkspaceID: req.WorkspaceID,
+	ctx := c.Request().Context()
+
+	var account models.ServiceAccount
+	var meta models.ServiceAccountMetum
+	err := h.store.ExecTx(ctx, func(q *models.Queries) error {
+		a, err := q.CreateServiceAccount(ctx, models.CreateServiceAccountParams{
+			Name:        req.Name,
+			Description: req.Description,
+			Active:      boolOrDefault(req.Active, true),
+			UserEmail:   userEmail(c),
+		})
+		if err != nil {
+			return err
+		}
+		m, err := q.CreateServiceAccountMeta(ctx, a.ID)
+		if err != nil {
+			return err
+		}
+		account = a
+		meta = m
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, newAccountResponse(account))
+	// Mint a JWT for the service account.
+	// TODO: persist this token in Redis (future task).
+	serviceToken, err := h.jwtManager.Generate(strconv.FormatInt(int64(account.ID), 10), oauth.JWTKindService)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, newServiceAccountTokenResponse(serviceAccountResponseFrom(account, meta), serviceToken))
 }
 
-// listAccounts returns accounts filtered by ?workspace_id= or ?role_id=. One of
-// the two filters is required.
+// listAccounts returns the service accounts owned by the caller.
 func (h *Handler) listAccounts(c echo.Context) error {
-	ctx := c.Request().Context()
-
-	if roleID, ok, err := queryInt64(c, "role_id"); err != nil {
-		return err
-	} else if ok {
-		list, err := h.store.ListAccountsByRole(ctx, roleID)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, newAccountResponses(list))
-	}
-
-	workspaceID, ok, err := queryInt64(c, "workspace_id")
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "workspace_id or role_id query parameter is required")
-	}
-
-	list, err := h.store.ListAccountsByWorkspace(ctx, workspaceID)
+	list, err := h.store.ListUserServiceAccounts(c.Request().Context(), userEmail(c))
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, newAccountResponses(list))
+	return c.JSON(http.StatusOK, newServiceAccountResponses(list))
+}
+
+func (h *Handler) getAccount(c echo.Context) error {
+	id, err := pathID(c, "id")
+	if err != nil {
+		return err
+	}
+
+	account, err := h.ownedAccount(c, id)
+	if err != nil {
+		return err
+	}
+
+	meta, err := h.store.GetServiceAccountMeta(c.Request().Context(), id)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, serviceAccountResponseFrom(account, meta))
 }
 
 func (h *Handler) updateAccount(c echo.Context) error {
@@ -254,21 +153,31 @@ func (h *Handler) updateAccount(c echo.Context) error {
 		return err
 	}
 
-	var req updateAccountRequest
+	if _, err := h.ownedAccount(c, id); err != nil {
+		return err
+	}
+
+	var req updateServiceAccountRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		return err
 	}
 
-	account, err := h.store.UpdateAccount(c.Request().Context(), models.UpdateAccountParams{
+	account, err := h.store.UpdateServiceAccount(c.Request().Context(), models.UpdateServiceAccountParams{
 		ID:          id,
 		Name:        req.Name,
 		Description: req.Description,
+		Active:      boolOrDefault(req.Active, true),
 	})
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, newAccountResponse(account))
+	meta, err := h.store.GetServiceAccountMeta(c.Request().Context(), id)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, serviceAccountResponseFrom(account, meta))
 }
 
 func (h *Handler) deleteAccount(c echo.Context) error {
@@ -277,72 +186,14 @@ func (h *Handler) deleteAccount(c echo.Context) error {
 		return err
 	}
 
-	if err := h.store.DeleteAccount(c.Request().Context(), id); err != nil {
+	if _, err := h.ownedAccount(c, id); err != nil {
+		return err
+	}
+
+	// service_account_meta and service_account_kv cascade on delete.
+	if err := h.store.DeleteServiceAccount(c.Request().Context(), id); err != nil {
 		return err
 	}
 
 	return c.NoContent(http.StatusNoContent)
-}
-
-// --- Role bindings (account_roles) ---
-
-func (h *Handler) bindRole(c echo.Context) error {
-	var req bindingRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
-	}
-
-	binding, err := h.store.BindAccountRole(c.Request().Context(), models.BindAccountRoleParams{
-		RoleID:    req.RoleID,
-		AccountID: req.AccountID,
-	})
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusCreated, newBindingResponse(binding))
-}
-
-func (h *Handler) listBindings(c echo.Context) error {
-	bindings, err := h.store.ListAccountRoles(c.Request().Context())
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, newBindingResponses(bindings))
-}
-
-// unbindRole removes a binding identified by the ?role_id= and ?account_id=
-// query parameters.
-func (h *Handler) unbindRole(c echo.Context) error {
-	roleID, ok, err := queryInt64(c, "role_id")
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "role_id query parameter is required")
-	}
-
-	accountID, ok, err := queryInt64(c, "account_id")
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "account_id query parameter is required")
-	}
-
-	if err := h.store.UnbindAccountRole(c.Request().Context(), models.UnbindAccountRoleParams{
-		RoleID:    roleID,
-		AccountID: accountID,
-	}); err != nil {
-		return err
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
-// Services.
-
-func (h *Handler) parseServiceAccount(c echo.Context) error {
-	return nil
 }

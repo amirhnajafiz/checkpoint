@@ -1,16 +1,8 @@
--- name: CreateUser :one
+-- name: UpsertUser :one
 INSERT INTO users (email)
 VALUES ($1)
+ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
 RETURNING *;
 
--- name: GetUser :one
-SELECT * FROM users
-WHERE email = $1;
-
--- name: ListUsers :many
-SELECT * FROM users
-ORDER BY created_at;
-
--- name: DeleteUser :exec
-DELETE FROM users
-WHERE email = $1;
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users;

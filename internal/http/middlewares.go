@@ -5,9 +5,13 @@ import (
 	"errors"
 	"net/http"
 
+	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
+
+// contextUserEmail is the echo context key holding the authenticated user email.
+const contextUserEmail = "user_email"
 
 // requestValidator adapts go-playground/validator to the echo.Validator
 // interface so handlers can call c.Validate(req).
@@ -24,6 +28,25 @@ func (v *requestValidator) Validate(i any) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	return nil
+}
+
+// authMiddleware requires a valid user JWT in the Authorization header and
+// stores the caller's email in the request context.
+func (h *Handler) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		raw := bearerToken(c)
+		if raw == "" {
+			return echo.NewHTTPError(http.StatusUnauthorized, "missing bearer token")
+		}
+
+		claims, err := h.jwtManager.Parse(raw)
+		if err != nil || claims.JWTKind != oauth.JWTKindUser || claims.Subject == "" {
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+		}
+
+		c.Set(contextUserEmail, claims.Subject)
+		return next(c)
+	}
 }
 
 // errorHandler renders every error as a JSON errorResponse, mapping common

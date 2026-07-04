@@ -11,115 +11,73 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
-// userResponse is the API view of a models.User.
-type userResponse struct {
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
+// loginResponse carries the signed user JWT back to the caller after a
+// successful Google login.
+type loginResponse struct {
+	Token string `json:"token"`
 }
 
-func newUserResponse(u models.User) userResponse {
-	return userResponse{
-		Email:     u.Email,
-		CreatedAt: u.CreatedAt,
-	}
+// serviceAccountResponse is the API view of a service account together with its
+// metadata (usage counters).
+type serviceAccountResponse struct {
+	ID          int32     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Active      bool      `json:"active"`
+	UserEmail   string    `json:"user_email"`
+	Usage       int       `json:"usage"`
+	CreatedAt   time.Time `json:"created_at"`
+	LastUsed    time.Time `json:"last_used"`
 }
 
-func newUserResponses(users []models.User) []userResponse {
-	out := make([]userResponse, 0, len(users))
-	for _, u := range users {
-		out = append(out, newUserResponse(u))
-	}
-	return out
-}
-
-// workspaceResponse is the API view of a models.Workspace.
-type workspaceResponse struct {
-	ID        int32  `json:"id"`
-	UserEmail string `json:"user_email"`
-}
-
-func newWorkspaceResponse(w models.Workspace) workspaceResponse {
-	return workspaceResponse{
-		ID:        w.ID,
-		UserEmail: w.UserEmail,
-	}
-}
-
-func newWorkspaceResponses(workspaces []models.Workspace) []workspaceResponse {
-	out := make([]workspaceResponse, 0, len(workspaces))
-	for _, w := range workspaces {
-		out = append(out, newWorkspaceResponse(w))
-	}
-	return out
-}
-
-// roleResponse is the API view of a models.Role.
-type roleResponse struct {
-	ID          int32  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	WorkspaceID int64  `json:"workspace_id"`
-}
-
-func newRoleResponse(r models.Role) roleResponse {
-	return roleResponse{
-		ID:          r.ID,
-		Name:        r.Name,
-		Description: r.Description,
-		WorkspaceID: r.WorkspaceID,
-	}
-}
-
-func newRoleResponses(roles []models.Role) []roleResponse {
-	out := make([]roleResponse, 0, len(roles))
-	for _, r := range roles {
-		out = append(out, newRoleResponse(r))
-	}
-	return out
-}
-
-// accountResponse is the API view of a models.Account.
-type accountResponse struct {
-	ID          int32  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	WorkspaceID int64  `json:"workspace_id"`
-}
-
-func newAccountResponse(a models.Account) accountResponse {
-	return accountResponse{
+// newServiceAccountResponse builds a response from a list row (account joined
+// with its metadata).
+func newServiceAccountResponse(a models.ListUserServiceAccountsRow) serviceAccountResponse {
+	return serviceAccountResponse{
 		ID:          a.ID,
 		Name:        a.Name,
 		Description: a.Description,
-		WorkspaceID: a.WorkspaceID,
+		Active:      a.Active,
+		UserEmail:   a.UserEmail,
+		Usage:       int(a.Usage),
+		CreatedAt:   a.CreatedAt,
+		LastUsed:    nullTime(a.LastUsed),
 	}
 }
 
-func newAccountResponses(accounts []models.Account) []accountResponse {
-	out := make([]accountResponse, 0, len(accounts))
+func newServiceAccountResponses(accounts []models.ListUserServiceAccountsRow) []serviceAccountResponse {
+	out := make([]serviceAccountResponse, 0, len(accounts))
 	for _, a := range accounts {
-		out = append(out, newAccountResponse(a))
+		out = append(out, newServiceAccountResponse(a))
 	}
 	return out
 }
 
-// bindingResponse is the API view of a models.AccountRole binding.
-type bindingResponse struct {
-	RoleID    int64 `json:"role_id"`
-	AccountID int64 `json:"account_id"`
-}
-
-func newBindingResponse(b models.AccountRole) bindingResponse {
-	return bindingResponse{
-		RoleID:    b.RoleID,
-		AccountID: b.AccountID,
+// serviceAccountResponseFrom builds a response from a single account and its
+// metadata row, used by the create/get/update endpoints.
+func serviceAccountResponseFrom(a models.ServiceAccount, m models.ServiceAccountMetum) serviceAccountResponse {
+	return serviceAccountResponse{
+		ID:          a.ID,
+		Name:        a.Name,
+		Description: a.Description,
+		Active:      a.Active,
+		UserEmail:   a.UserEmail,
+		Usage:       int(m.Usage),
+		CreatedAt:   a.CreatedAt,
+		LastUsed:    nullTime(m.LastUsed),
 	}
 }
 
-func newBindingResponses(bindings []models.AccountRole) []bindingResponse {
-	out := make([]bindingResponse, 0, len(bindings))
-	for _, b := range bindings {
-		out = append(out, newBindingResponse(b))
+// serviceAccountTokenResponse is returned on creation: the account plus the
+// freshly minted service JWT (to be stored in Redis in a future task).
+type serviceAccountTokenResponse struct {
+	serviceAccountResponse
+	Token string `json:"token"`
+}
+
+func newServiceAccountTokenResponse(base serviceAccountResponse, tok string) serviceAccountTokenResponse {
+	return serviceAccountTokenResponse{
+		serviceAccountResponse: base,
+		Token:                  tok,
 	}
-	return out
 }

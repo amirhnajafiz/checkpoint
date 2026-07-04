@@ -9,65 +9,27 @@ import (
 	"context"
 )
 
-const createUser = `-- name: CreateUser :one
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const upsertUser = `-- name: UpsertUser :one
 INSERT INTO users (email)
 VALUES ($1)
+ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
 RETURNING email, created_at
 `
 
-func (q *Queries) CreateUser(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, email)
+func (q *Queries) UpsertUser(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, upsertUser, email)
 	var i User
 	err := row.Scan(&i.Email, &i.CreatedAt)
 	return i, err
-}
-
-const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users
-WHERE email = $1
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, email string) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, email)
-	return err
-}
-
-const getUser = `-- name: GetUser :one
-SELECT email, created_at FROM users
-WHERE email = $1
-`
-
-func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, email)
-	var i User
-	err := row.Scan(&i.Email, &i.CreatedAt)
-	return i, err
-}
-
-const listUsers = `-- name: ListUsers :many
-SELECT email, created_at FROM users
-ORDER BY created_at
-`
-
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []User{}
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(&i.Email, &i.CreatedAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

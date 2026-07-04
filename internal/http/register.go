@@ -6,17 +6,21 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 )
 
 // Handler holds the dependencies shared by every endpoint.
 type Handler struct {
-	store *db.Store
+	store       *db.Store
+	jwtManager  *oauth.JWTManager
+	googleOAuth *oauth.GoogleOAuth
 }
 
-// NewHandler builds a Handler backed by the given store.
-func NewHandler(store *db.Store) *Handler {
-	return &Handler{store: store}
+// NewHandler builds a Handler backed by the store, JWT manager, and Google
+// OAuth client.
+func NewHandler(store *db.Store, jwtm *oauth.JWTManager, googleoa *oauth.GoogleOAuth) *Handler {
+	return &Handler{store: store, jwtManager: jwtm, googleOAuth: googleoa}
 }
 
 // Register configures middlewares, the request validator, the JSON error
@@ -36,42 +40,19 @@ func (h *Handler) Register(e *echo.Echo) {
 	}))
 	e.Use(middleware.Recover())
 
-	// Handler groups.
 	api := e.Group("/api")
-	auth := api.Group("/auth")
-	services := api.Group("/services")
-	workspaces := api.Group("/workspaces")
-	roles := workspaces.Group("/roles")
-	accounts := workspaces.Group("/accounts")
-	bindings := workspaces.Group("/role-bindings")
 
-	// Users.
-	auth.POST("/", h.createUser)
+	// Users: Google OAuth login flow (public).
+	users := api.Group("/users")
+	users.GET("/login", h.login)
+	users.GET("/callback", h.callback)
 
-	// Services.
-	services.GET("/", h.parseServiceAccount)
-
-	// Workspaces.
-	workspaces.POST("/", h.createWorkspace)
-	workspaces.GET("/", h.listWorkspaces)
-	workspaces.GET("/:id", h.getWorkspace)
-	workspaces.PUT("/:id", h.updateWorkspace)
-	workspaces.DELETE("/:id", h.deleteWorkspace)
-
-	// Roles.
-	roles.POST("/", h.createRole)
-	roles.GET("/", h.listRoles)
-	roles.PUT("/:id", h.updateRole)
-	roles.DELETE("/:id", h.deleteRole)
-
-	// Accounts.
-	accounts.POST("/", h.createAccount)
-	accounts.GET("/", h.listAccounts)
+	// Service accounts: authenticated and scoped to the caller.
+	accounts := api.Group("/accounts")
+	accounts.Use(h.authMiddleware)
+	accounts.POST("", h.createAccount)
+	accounts.GET("", h.listAccounts)
+	accounts.GET("/:id", h.getAccount)
 	accounts.PUT("/:id", h.updateAccount)
 	accounts.DELETE("/:id", h.deleteAccount)
-
-	// Role bindings.
-	bindings.POST("/", h.bindRole)
-	bindings.GET("/", h.listBindings)
-	bindings.DELETE("/:id", h.unbindRole)
 }

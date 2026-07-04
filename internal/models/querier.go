@@ -9,31 +9,20 @@ import (
 )
 
 type Querier interface {
-	BindAccountRole(ctx context.Context, arg BindAccountRoleParams) (AccountRole, error)
-	CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error)
-	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
-	CreateUser(ctx context.Context, email string) (User, error)
-	CreateWorkspace(ctx context.Context, userEmail string) (Workspace, error)
-	DeleteAccount(ctx context.Context, id int32) error
-	DeleteRole(ctx context.Context, id int32) error
-	DeleteUser(ctx context.Context, email string) error
-	DeleteWorkspace(ctx context.Context, id int32) error
-	GetAccount(ctx context.Context, id int32) (Account, error)
-	GetRole(ctx context.Context, id int32) (Role, error)
-	GetUser(ctx context.Context, email string) (User, error)
-	GetWorkspace(ctx context.Context, id int32) (Workspace, error)
-	ListAccountRoles(ctx context.Context) ([]AccountRole, error)
-	ListAccountsByRole(ctx context.Context, roleID int64) ([]Account, error)
-	ListAccountsByWorkspace(ctx context.Context, workspaceID int64) ([]Account, error)
-	ListRolesByAccount(ctx context.Context, accountID int64) ([]Role, error)
-	ListRolesByWorkspace(ctx context.Context, workspaceID int64) ([]Role, error)
-	ListUsers(ctx context.Context) ([]User, error)
-	ListWorkspaces(ctx context.Context) ([]Workspace, error)
-	ListWorkspacesByUser(ctx context.Context, userEmail string) ([]Workspace, error)
-	UnbindAccountRole(ctx context.Context, arg UnbindAccountRoleParams) error
-	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error)
-	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
-	UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error)
+	CountUsers(ctx context.Context) (int64, error)
+	CreateServiceAccount(ctx context.Context, arg CreateServiceAccountParams) (ServiceAccount, error)
+	CreateServiceAccountMeta(ctx context.Context, accountID int32) (ServiceAccountMetum, error)
+	DeleteServiceAccount(ctx context.Context, id int32) error
+	DeleteServiceAccountKV(ctx context.Context, id int32) error
+	DeleteServiceAccountMeta(ctx context.Context, accountID int32) error
+	GetServiceAccount(ctx context.Context, id int32) (ServiceAccount, error)
+	GetServiceAccountMeta(ctx context.Context, accountID int32) (ServiceAccountMetum, error)
+	ListServiceAccountKV(ctx context.Context, accountID int32) ([]ServiceAccountKv, error)
+	ListUserServiceAccounts(ctx context.Context, userEmail string) ([]ListUserServiceAccountsRow, error)
+	SetServiceAccountKV(ctx context.Context, arg SetServiceAccountKVParams) (ServiceAccountKv, error)
+	UpdateServiceAccount(ctx context.Context, arg UpdateServiceAccountParams) (ServiceAccount, error)
+	UpdateServiceAccountMeta(ctx context.Context, arg UpdateServiceAccountMetaParams) (ServiceAccountMetum, error)
+	UpsertUser(ctx context.Context, email string) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)
