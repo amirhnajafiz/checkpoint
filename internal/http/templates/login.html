@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MayIGoo · Sign in</title>
+  <style>
+    :root {
+      --blue-50:#eef6ff; --blue-100:#d9ecff; --blue-300:#8fc4f5;
+      --blue-500:#3b93e6; --blue-600:#2f7fd0; --ink:#12324f; --muted:#5b7891;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(160deg,var(--blue-50),var(--blue-100));
+      color:var(--ink);
+    }
+    .card {
+      background:#fff; border:1px solid var(--blue-100); border-radius:16px;
+      padding:40px; width:360px; max-width:90vw; text-align:center;
+      box-shadow:0 10px 30px rgba(59,147,230,.15);
+    }
+    .logo {
+      width:56px; height:56px; border-radius:14px; background:var(--blue-500);
+      margin:0 auto 16px; display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:28px; font-weight:700;
+    }
+    h1 { margin:0 0 8px; font-size:24px; }
+    p  { margin:0 0 24px; color:var(--muted); font-size:14px; }
+    .btn {
+      display:inline-block; width:100%; padding:12px 16px; border:none; border-radius:10px;
+      background:var(--blue-500); color:#fff; font-size:15px; font-weight:600; cursor:pointer;
+      text-decoration:none; transition:background .15s;
+    }
+    .btn:hover { background:var(--blue-600); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">M</div>
+    <h1>MayIGoo</h1>
+    <p>Sign in to manage your service accounts.</p>
+    <a class="btn" href="{{ .LoginURL }}">Sign in with Google</a>
+  </div>
+  <script>
+    // Already authenticated? Go straight to the dashboard.
+    if (localStorage.getItem("token")) {
+      window.location.replace("{{ .AppPath }}");
+    }
+  </script>
+</body>
+</html>

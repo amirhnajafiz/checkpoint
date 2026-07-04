@@ -29,6 +29,7 @@ func NewHandler(store *db.Store, jwtm *oauth.JWTManager, googleoa *oauth.GoogleO
 // handler, and wires every route onto the given Echo instance.
 func (h *Handler) Register(e *echo.Echo) {
 	e.Validator = newValidator()
+	e.Renderer = newTemplateRenderer()
 	e.HTTPErrorHandler = errorHandler
 
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
@@ -42,6 +43,10 @@ func (h *Handler) Register(e *echo.Echo) {
 	}))
 	e.Use(middleware.Recover())
 
+	// Server-rendered client pages.
+	e.GET("/", h.loginPage)
+	e.GET("/app", h.appPage)
+
 	api := e.Group("/api")
 
 	// Users: Google OAuth login flow (public).
@@ -49,9 +54,10 @@ func (h *Handler) Register(e *echo.Echo) {
 	users.GET("/login", h.login)
 	users.GET("/callback", h.callback)
 
-	// Services: open endpoint to validate & unmarshal a service token.
+	// Services: open endpoint to validate & unmarshal a service token supplied
+	// via the Authorization: Bearer header.
 	services := api.Group("/services")
-	services.POST("/validate", h.validateService)
+	services.GET("/validate", h.validateService)
 
 	// Service accounts: authenticated and scoped to the caller.
 	accounts := api.Group("/accounts")

@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -67,12 +69,18 @@ func (h *Handler) callback(c echo.Context) error {
 		return err
 	}
 
-	signed, err := h.jwtManager.Generate(user.Email, oauth.JWTKindUser)
+	signed, err := h.jwtManager.Generate(user.Email, oauth.JWTKindUser, nil)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, loginResponse{Token: signed})
+	// API clients (Accept: application/json) get the token as JSON; browsers
+	// are redirected to the dashboard with the token in the URL fragment
+	// (never sent to the server) so the client can store it in localStorage.
+	if strings.Contains(c.Request().Header.Get("Accept"), "application/json") {
+		return c.JSON(http.StatusOK, loginResponse{Token: signed})
+	}
+	return c.Redirect(http.StatusFound, "/app#token="+url.QueryEscape(signed))
 }
 
 // --- Service accounts (authenticated; scoped to the caller) ---
@@ -87,6 +95,8 @@ func (h *Handler) createAccount(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
+	labels := orEmptyLabels(req.KV)
+
 	var account models.ServiceAccount
 	var meta models.ServiceAccountMetum
 	err := h.store.ExecTx(ctx, func(q *models.Queries) error {
@@ -99,32 +109,34 @@ func (h *Handler) createAccount(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		m, err := q.CreateServiceAccountMeta(ctx, a.ID)
-		if err != nil {
+		if _, err := q.CreateServiceAccountMeta(ctx, a.ID); err != nil {
+			return err
+		}
+		if err := setAccountKV(ctx, q, a.ID, labels); err != nil {
 			return err
 		}
 		account = a
-		meta = m
-		return nil
+		meta, err = q.GetServiceAccountMeta(ctx, a.ID)
+		return err
 	})
 	if err != nil {
 		return err
 	}
 
-	// Mint a JWT for the service account and cache it in Redis.
-	serviceToken, err := h.issueServiceToken(ctx, account.ID)
+	// Mint a JWT for the service account (carrying its labels) and cache it.
+	serviceToken, err := h.issueServiceToken(ctx, account.ID, labels)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, newServiceAccountTokenResponse(serviceAccountResponseFrom(account, meta), serviceToken))
+	return c.JSON(http.StatusCreated, newServiceAccountTokenResponse(serviceAccountResponseFrom(account, meta, labels), serviceToken))
 }
 
-// issueServiceToken mints a fresh JWT for a service account and stores it in the
-// cache (keyed by account id) so the issuer can retrieve it later and the open
-// validate endpoint can confirm it is the current token.
-func (h *Handler) issueServiceToken(ctx context.Context, accountID int32) (string, error) {
-	serviceToken, err := h.jwtManager.Generate(strconv.FormatInt(int64(accountID), 10), oauth.JWTKindService)
+// issueServiceToken mints a fresh JWT for a service account (embedding its
+// labels) and stores it in the cache (keyed by account id) so the issuer can
+// retrieve it later and the open validate endpoint can confirm it is current.
+func (h *Handler) issueServiceToken(ctx context.Context, accountID int32, labels map[string]string) (string, error) {
+	serviceToken, err := h.jwtManager.Generate(strconv.FormatInt(int64(accountID), 10), oauth.JWTKindService, labels)
 	if err != nil {
 		return "", err
 	}
@@ -134,14 +146,49 @@ func (h *Handler) issueServiceToken(ctx context.Context, accountID int32) (strin
 	return serviceToken, nil
 }
 
-// listAccounts returns the service accounts owned by the caller.
+// setAccountKV replaces an account's key/value labels with the given map.
+func setAccountKV(ctx context.Context, q *models.Queries, accountID int32, kv map[string]string) error {
+	if err := q.DeleteServiceAccountKVByAccount(ctx, accountID); err != nil {
+		return err
+	}
+	for k, v := range kv {
+		if _, err := q.SetServiceAccountKV(ctx, models.SetServiceAccountKVParams{
+			AccountID: accountID,
+			Xkey:      k,
+			Xvalue:    v,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// listAccounts returns the service accounts owned by the caller, each with its
+// labels.
 func (h *Handler) listAccounts(c echo.Context) error {
-	list, err := h.store.ListUserServiceAccounts(c.Request().Context(), userEmail(c))
+	ctx := c.Request().Context()
+	email := userEmail(c)
+
+	list, err := h.store.ListUserServiceAccounts(ctx, email)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, newServiceAccountResponses(list))
+	kvRows, err := h.store.ListUserServiceAccountKV(ctx, email)
+	if err != nil {
+		return err
+	}
+	kvByAccount := make(map[int32]map[string]string)
+	for _, r := range kvRows {
+		m := kvByAccount[r.AccountID]
+		if m == nil {
+			m = make(map[string]string)
+			kvByAccount[r.AccountID] = m
+		}
+		m[r.Xkey] = r.Xvalue
+	}
+
+	return c.JSON(http.StatusOK, newServiceAccountResponses(list, kvByAccount))
 }
 
 func (h *Handler) getAccount(c echo.Context) error {
@@ -155,12 +202,19 @@ func (h *Handler) getAccount(c echo.Context) error {
 		return err
 	}
 
-	meta, err := h.store.GetServiceAccountMeta(c.Request().Context(), id)
+	ctx := c.Request().Context()
+
+	meta, err := h.store.GetServiceAccountMeta(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, serviceAccountResponseFrom(account, meta))
+	kvRows, err := h.store.ListServiceAccountKV(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, serviceAccountResponseFrom(account, meta, kvMap(kvRows)))
 }
 
 func (h *Handler) updateAccount(c echo.Context) error {
@@ -178,31 +232,40 @@ func (h *Handler) updateAccount(c echo.Context) error {
 		return err
 	}
 
-	account, err := h.store.UpdateServiceAccount(c.Request().Context(), models.UpdateServiceAccountParams{
-		ID:          id,
-		Name:        req.Name,
-		Description: req.Description,
-		Active:      boolOrDefault(req.Active, true),
+	ctx := c.Request().Context()
+	labels := orEmptyLabels(req.KV)
+
+	var account models.ServiceAccount
+	err = h.store.ExecTx(ctx, func(q *models.Queries) error {
+		a, err := q.UpdateServiceAccount(ctx, models.UpdateServiceAccountParams{
+			ID:          id,
+			Name:        req.Name,
+			Description: req.Description,
+			Active:      boolOrDefault(req.Active, true),
+		})
+		if err != nil {
+			return err
+		}
+		account = a
+		return setAccountKV(ctx, q, id, labels)
 	})
 	if err != nil {
 		return err
 	}
-
-	ctx := c.Request().Context()
 
 	meta, err := h.store.GetServiceAccountMeta(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// Updating an account rotates its token: mint and cache a fresh one,
-	// superseding the previous token.
-	serviceToken, err := h.issueServiceToken(ctx, id)
+	// Updating an account rotates its token: mint and cache a fresh one
+	// (with the updated labels), superseding the previous token.
+	serviceToken, err := h.issueServiceToken(ctx, id, labels)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, newServiceAccountTokenResponse(serviceAccountResponseFrom(account, meta), serviceToken))
+	return c.JSON(http.StatusOK, newServiceAccountTokenResponse(serviceAccountResponseFrom(account, meta, labels), serviceToken))
 }
 
 func (h *Handler) deleteAccount(c echo.Context) error {
@@ -257,12 +320,12 @@ func (h *Handler) getAccountToken(c echo.Context) error {
 // signature, confirms it is the account's current cached token, and returns the
 // unmarshaled claims.
 func (h *Handler) validateService(c echo.Context) error {
-	var req validateServiceRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
+	raw := bearerToken(c)
+	if raw == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "missing bearer token")
 	}
 
-	claims, err := h.jwtManager.Parse(req.Token)
+	claims, err := h.jwtManager.Parse(raw)
 	if err != nil || claims.JWTKind != oauth.JWTKindService {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid service token")
 	}
@@ -275,7 +338,7 @@ func (h *Handler) validateService(c echo.Context) error {
 	// Confirm the presented token is the account's current cached token; an
 	// older (rotated) or evicted token is treated as invalid.
 	cached, err := h.cache.GetServiceToken(c.Request().Context(), int32(accountID))
-	if errors.Is(err, cache.ErrNotFound) || (err == nil && cached != req.Token) {
+	if errors.Is(err, cache.ErrNotFound) || (err == nil && cached != raw) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "service token is not active")
 	}
 	if err != nil {

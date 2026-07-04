@@ -30,3 +30,4 @@ go.work
 .claude/
 .idea/
 .DS_store
+.env

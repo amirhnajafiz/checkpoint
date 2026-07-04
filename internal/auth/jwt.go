@@ -15,9 +15,11 @@ const (
 	JWTKindService JWTKind = "service"
 )
 
-// JWTClaims are the custom claims carried by every token.
+// JWTClaims are the custom claims carried by every token. Labels are the
+// key/value pairs a user attaches to a service account to identify its token.
 type JWTClaims struct {
-	JWTKind JWTKind `json:"kind"`
+	JWTKind JWTKind           `json:"kind"`
+	Labels  map[string]string `json:"labels,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -39,11 +41,13 @@ func (m *JWTManager) TTL() time.Duration {
 }
 
 // Generate signs a token for the given subject and kind. For a user token the
-// subject is the user's email; for a service token it is the service account id.
-func (m *JWTManager) Generate(subject string, kind JWTKind) (string, error) {
+// subject is the user's email; for a service token it is the service account id
+// and labels carries the account's key/value pairs. labels may be nil.
+func (m *JWTManager) Generate(subject string, kind JWTKind, labels map[string]string) (string, error) {
 	now := time.Now()
 	claims := JWTClaims{
 		JWTKind: kind,
+		Labels:  labels,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   subject,
 			IssuedAt:  jwt.NewNumericDate(now),

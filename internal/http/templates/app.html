@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MayIGoo · Dashboard</title>
+  <style>
+    :root {
+      --blue-50:#eef6ff; --blue-100:#d9ecff; --blue-200:#bfdcfa; --blue-300:#8fc4f5;
+      --blue-500:#3b93e6; --blue-600:#2f7fd0; --ink:#12324f; --muted:#5b7891;
+      --danger:#d64545; --ok:#2f9e6f;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(160deg,var(--blue-50),var(--blue-100)); color:var(--ink);
+      min-height:100vh;
+    }
+    header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 24px; background:#fff; border-bottom:1px solid var(--blue-100);
+      box-shadow:0 2px 8px rgba(59,147,230,.08);
+    }
+    header .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:18px; }
+    header .logo { width:34px; height:34px; border-radius:9px; background:var(--blue-500); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+    header .right { display:flex; align-items:center; gap:14px; font-size:14px; color:var(--muted); }
+    main { max-width:860px; margin:0 auto; padding:28px 24px 60px; }
+    h2 { font-size:16px; margin:0 0 14px; }
+    .panel { background:#fff; border:1px solid var(--blue-100); border-radius:14px; padding:20px; margin-bottom:24px; box-shadow:0 6px 20px rgba(59,147,230,.08); }
+    label { display:block; font-size:13px; color:var(--muted); margin:0 0 4px; }
+    input[type=text], textarea {
+      width:100%; padding:10px 12px; border:1px solid var(--blue-200); border-radius:9px;
+      font:inherit; margin-bottom:14px; background:var(--blue-50);
+    }
+    textarea { resize:vertical; min-height:56px; }
+    .row { display:flex; gap:16px; }
+    .row > div { flex:1; }
+    .check { display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:14px; }
+    .btn {
+      padding:9px 14px; border:none; border-radius:9px; background:var(--blue-500); color:#fff;
+      font-weight:600; font-size:14px; cursor:pointer; transition:background .15s;
+    }
+    .btn:hover { background:var(--blue-600); }
+    .btn.sm { padding:6px 10px; font-size:13px; }
+    .btn.ghost { background:var(--blue-50); color:var(--blue-600); border:1px solid var(--blue-200); }
+    .btn.ghost:hover { background:var(--blue-100); }
+    .btn.danger { background:transparent; color:var(--danger); border:1px solid #f0c6c6; }
+    .btn.danger:hover { background:#fbeaea; }
+    .accounts { display:grid; gap:14px; }
+    .acct { border:1px solid var(--blue-100); border-radius:12px; padding:16px; }
+    .acct .top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .acct .name { font-weight:700; }
+    .acct .desc { color:var(--muted); font-size:14px; margin:2px 0 8px; }
+    .acct .meta { font-size:12px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; }
+    .badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
+    .badge.on { background:#e2f5ec; color:var(--ok); }
+    .badge.off { background:#f5e2e2; color:var(--danger); }
+    .actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    .empty { color:var(--muted); font-size:14px; text-align:center; padding:20px; }
+    .kv-row { display:flex; gap:8px; margin-bottom:8px; }
+    .kv-row input { margin-bottom:0; }
+    .kv-row .rm { flex:0 0 auto; background:transparent; color:var(--danger); border:1px solid #f0c6c6; border-radius:9px; padding:0 12px; cursor:pointer; font-size:16px; }
+    .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .chip { background:var(--blue-50); border:1px solid var(--blue-200); color:var(--blue-600); font-size:12px; padding:3px 9px; border-radius:20px; }
+    .chip b { font-weight:700; }
+    #toast {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:var(--ink); color:#fff; padding:10px 18px; border-radius:10px; font-size:14px;
+      opacity:0; pointer-events:none; transition:all .2s;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #toast.err { background:var(--danger); }
+    a.link { color:var(--blue-600); cursor:pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="logo">M</span> MayIGoo</div>
+    <div class="right">
+      <span id="email">…</span>
+      <button class="btn ghost sm" id="logout">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="panel">
+      <h2 id="formTitle">Create service account</h2>
+      <form id="acctForm">
+        <input type="hidden" id="editId" value="">
+        <div class="row">
+          <div>
+            <label for="name">Name</label>
+            <input type="text" id="name" placeholder="my-service" required>
+          </div>
+        </div>
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="What is this account for?"></textarea>
+        <div class="check">
+          <input type="checkbox" id="active" checked>
+          <label for="active" style="margin:0;">Active</label>
+        </div>
+        <label>Labels — key / value pairs baked into the token</label>
+        <div id="kvEditor"></div>
+        <button class="btn ghost sm" type="button" id="addKv" style="margin-bottom:16px;">+ Add label</button>
+        <div></div>
+        <button class="btn" type="submit" id="submitBtn">Create</button>
+        <button class="btn ghost" type="button" id="cancelEdit" style="display:none;">Cancel</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Your service accounts</h2>
+      <div class="accounts" id="accounts"></div>
+      <div class="empty" id="empty" style="display:none;">No service accounts yet.</div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const API = "{{ .APIBase }}";
+    const LOGIN = "{{ .LoginPath }}";
+
+    // Capture the JWT handed back by the OAuth callback in the URL fragment.
+    (function captureToken() {
+      if (location.hash.indexOf("#token=") === 0) {
+        const t = decodeURIComponent(location.hash.slice("#token=".length));
+        if (t) localStorage.setItem("token", t);
+        history.replaceState(null, "", location.pathname);
+      }
+    })();
+
+    const token = localStorage.getItem("token");
+    if (!token) { location.replace(LOGIN); }
+
+    function jwtClaims() {
+      try {
+        const p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        return JSON.parse(decodeURIComponent(escape(atob(p))));
+      } catch (e) { return {}; }
+    }
+    document.getElementById("email").textContent = jwtClaims().sub || "signed in";
+
+    let toastTimer;
+    function toast(msg, isErr) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.className = "show" + (isErr ? " err" : "");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.className = ""; }, 2200);
+    }
+
+    async function api(path, opts) {
+      opts = opts || {};
+      const headers = Object.assign(
+        { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        opts.headers || {}
+      );
+      const res = await fetch(API + path, Object.assign({}, opts, { headers: headers }));
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        location.replace(LOGIN);
+        throw new Error("unauthorized");
+      }
+      return res;
+    }
+
+    async function copyText(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          document.execCommand("copy"); document.body.removeChild(ta);
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+    function fmtDate(s) {
+      if (!s) return "—";
+      const d = new Date(s);
+      if (isNaN(d) || d.getFullYear() < 2) return "never";
+      return d.toLocaleString();
+    }
+
+    // --- KV label editor ---
+    function addKvRow(key, value) {
+      const row = document.createElement("div");
+      row.className = "kv-row";
+      row.innerHTML =
+        '<input type="text" class="kv-key" placeholder="key" value="' + esc(key || "") + '">' +
+        '<input type="text" class="kv-val" placeholder="value" value="' + esc(value || "") + '">' +
+        '<button type="button" class="rm" title="Remove">&times;</button>';
+      row.querySelector(".rm").addEventListener("click", () => row.remove());
+      document.getElementById("kvEditor").appendChild(row);
+    }
+    function collectKV() {
+      const kv = {};
+      document.querySelectorAll("#kvEditor .kv-row").forEach(row => {
+        const k = row.querySelector(".kv-key").value.trim();
+        const v = row.querySelector(".kv-val").value.trim();
+        if (k) kv[k] = v;
+      });
+      return kv;
+    }
+    function clearKV() { document.getElementById("kvEditor").innerHTML = ""; }
+    function populateKV(obj) {
+      clearKV();
+      Object.keys(obj || {}).forEach(k => addKvRow(k, obj[k]));
+    }
+    document.getElementById("addKv").addEventListener("click", () => addKvRow("", ""));
+
+    let accounts = [];
+
+    async function loadAccounts() {
+      const res = await api("/accounts");
+      accounts = res.ok ? (await res.json() || []) : [];
+      render();
+    }
+
+    function render() {
+      const wrap = document.getElementById("accounts");
+      const empty = document.getElementById("empty");
+      wrap.innerHTML = "";
+      empty.style.display = accounts.length ? "none" : "block";
+      accounts.forEach(a => {
+        const kv = a.kv || {};
+        const chips = Object.keys(kv)
+          .map(k => '<span class="chip"><b>' + esc(k) + '</b>: ' + esc(kv[k]) + '</span>')
+          .join("");
+        const el = document.createElement("div");
+        el.className = "acct";
+        el.innerHTML =
+          '<div class="top">' +
+            '<div>' +
+              '<div class="name">' + esc(a.name) + '</div>' +
+              '<div class="desc">' + (esc(a.description) || "No description") + '</div>' +
+            '</div>' +
+            '<span class="badge ' + (a.active ? "on" : "off") + '">' + (a.active ? "active" : "inactive") + '</span>' +
+          '</div>' +
+          '<div class="meta">' +
+            '<span>ID: ' + a.id + '</span>' +
+            '<span>Usage: ' + (a.usage || 0) + '</span>' +
+            '<span>Last used: ' + fmtDate(a.last_used) + '</span>' +
+          '</div>' +
+          (chips ? '<div class="chips">' + chips + '</div>' : "") +
+          '<div class="actions">' +
+            '<button class="btn sm" data-copy="' + a.id + '">Copy token</button>' +
+            '<button class="btn ghost sm" data-edit="' + a.id + '">Edit</button>' +
+            '<button class="btn danger sm" data-del="' + a.id + '">Delete</button>' +
+          '</div>';
+        wrap.appendChild(el);
+      });
+    }
+
+    // Copy a service account's cached token to the clipboard.
+    async function copyToken(id) {
+      const res = await api("/accounts/" + id + "/token");
+      if (!res.ok) { toast("No token available for this account", true); return; }
+      const data = await res.json();
+      const ok = await copyText(data.token);
+      toast(ok ? "Token copied to clipboard" : "Copy failed — token: " + data.token, !ok);
+    }
+
+    function startEdit(id) {
+      const a = accounts.find(x => x.id === id);
+      if (!a) return;
+      document.getElementById("editId").value = a.id;
+      document.getElementById("name").value = a.name;
+      document.getElementById("description").value = a.description;
+      document.getElementById("active").checked = a.active;
+      populateKV(a.kv);
+      document.getElementById("formTitle").textContent = "Edit service account #" + a.id;
+      document.getElementById("submitBtn").textContent = "Save changes";
+      document.getElementById("cancelEdit").style.display = "inline-block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function resetForm() {
+      document.getElementById("acctForm").reset();
+      document.getElementById("editId").value = "";
+      document.getElementById("active").checked = true;
+      clearKV();
+      document.getElementById("formTitle").textContent = "Create service account";
+      document.getElementById("submitBtn").textContent = "Create";
+      document.getElementById("cancelEdit").style.display = "none";
+    }
+
+    async function delAccount(id) {
+      if (!confirm("Delete service account #" + id + "?")) return;
+      const res = await api("/accounts/" + id, { method: "DELETE" });
+      if (res.ok) { toast("Account deleted"); loadAccounts(); }
+      else { toast("Delete failed", true); }
+    }
+
+    document.getElementById("accounts").addEventListener("click", e => {
+      const t = e.target;
+      if (t.dataset.copy) copyToken(Number(t.dataset.copy));
+      else if (t.dataset.edit) startEdit(Number(t.dataset.edit));
+      else if (t.dataset.del) delAccount(Number(t.dataset.del));
+    });
+
+    document.getElementById("cancelEdit").addEventListener("click", resetForm);
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      location.replace(LOGIN);
+    });
+
+    document.getElementById("acctForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const id = document.getElementById("editId").value;
+      const body = JSON.stringify({
+        name: document.getElementById("name").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        active: document.getElementById("active").checked,
+        kv: collectKV()
+      });
+      const res = id
+        ? await api("/accounts/" + id, { method: "PUT", body })
+        : await api("/accounts", { method: "POST", body });
+      if (!res.ok) { toast((id ? "Update" : "Create") + " failed", true); return; }
+      const data = await res.json();
+      resetForm();
+      await loadAccounts();
+      // A fresh token is minted on create/update — offer it immediately.
+      if (data.token) {
+        const ok = await copyText(data.token);
+        toast(ok ? "Saved · new token copied to clipboard" : "Saved");
+      } else {
+        toast("Saved");
+      }
+    });
+
+    loadAccounts();
+  </script>
+</body>
+</html>

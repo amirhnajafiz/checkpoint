@@ -14,10 +14,12 @@ type Querier interface {
 	CreateServiceAccountMeta(ctx context.Context, accountID int32) (ServiceAccountMetum, error)
 	DeleteServiceAccount(ctx context.Context, id int32) error
 	DeleteServiceAccountKV(ctx context.Context, id int32) error
+	DeleteServiceAccountKVByAccount(ctx context.Context, accountID int32) error
 	DeleteServiceAccountMeta(ctx context.Context, accountID int32) error
 	GetServiceAccount(ctx context.Context, id int32) (ServiceAccount, error)
 	GetServiceAccountMeta(ctx context.Context, accountID int32) (ServiceAccountMetum, error)
 	ListServiceAccountKV(ctx context.Context, accountID int32) ([]ServiceAccountKv, error)
+	ListUserServiceAccountKV(ctx context.Context, userEmail string) ([]ListUserServiceAccountKVRow, error)
 	ListUserServiceAccounts(ctx context.Context, userEmail string) ([]ListUserServiceAccountsRow, error)
 	SetServiceAccountKV(ctx context.Context, arg SetServiceAccountKVParams) (ServiceAccountKv, error)
 	UpdateServiceAccount(ctx context.Context, arg UpdateServiceAccountParams) (ServiceAccount, error)

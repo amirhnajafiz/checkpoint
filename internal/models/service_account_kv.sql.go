@@ -19,6 +19,16 @@ func (q *Queries) DeleteServiceAccountKV(ctx context.Context, id int32) error {
 	return err
 }
 
+const deleteServiceAccountKVByAccount = `-- name: DeleteServiceAccountKVByAccount :exec
+DELETE FROM service_account_kv
+WHERE account_id = $1
+`
+
+func (q *Queries) DeleteServiceAccountKVByAccount(ctx context.Context, accountID int32) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceAccountKVByAccount, accountID)
+	return err
+}
+
 const listServiceAccountKV = `-- name: ListServiceAccountKV :many
 SELECT id, account_id, xkey, xvalue FROM service_account_kv
 WHERE account_id = $1
@@ -40,6 +50,43 @@ func (q *Queries) ListServiceAccountKV(ctx context.Context, accountID int32) ([]
 			&i.Xkey,
 			&i.Xvalue,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserServiceAccountKV = `-- name: ListUserServiceAccountKV :many
+SELECT kv.account_id, kv.xkey, kv.xvalue
+FROM service_account_kv kv
+JOIN service_accounts sa ON sa.id = kv.account_id
+WHERE sa.user_email = $1
+ORDER BY kv.account_id, kv.xkey
+`
+
+type ListUserServiceAccountKVRow struct {
+	AccountID int32  `json:"account_id"`
+	Xkey      string `json:"xkey"`
+	Xvalue    string `json:"xvalue"`
+}
+
+func (q *Queries) ListUserServiceAccountKV(ctx context.Context, userEmail string) ([]ListUserServiceAccountKVRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUserServiceAccountKV, userEmail)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserServiceAccountKVRow{}
+	for rows.Next() {
+		var i ListUserServiceAccountKVRow
+		if err := rows.Scan(&i.AccountID, &i.Xkey, &i.Xvalue); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
