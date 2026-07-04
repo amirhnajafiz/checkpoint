@@ -39,10 +39,22 @@ type Config struct {
 	Daemons DaemonsConfig `koanf:"daemons"`
 }
 
-// HTTPConfig configures the HTTP server.
+// HTTPConfig configures the HTTP server and its connection controls.
 type HTTPConfig struct {
 	Addr string `koanf:"addr"`
 	Port int    `koanf:"port"`
+	// ReadTimeout bounds reading the entire request, including the body.
+	ReadTimeout time.Duration `koanf:"read_timeout"`
+	// ReadHeaderTimeout bounds reading the request headers.
+	ReadHeaderTimeout time.Duration `koanf:"read_header_timeout"`
+	// WriteTimeout bounds writing the response.
+	WriteTimeout time.Duration `koanf:"write_timeout"`
+	// IdleTimeout bounds how long a keep-alive connection stays open between
+	// requests.
+	IdleTimeout time.Duration `koanf:"idle_timeout"`
+	// ShutdownTimeout bounds how long graceful shutdown waits for in-flight
+	// requests to finish.
+	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
 }
 
 // JWTConfig configures token signing.

@@ -13,8 +13,13 @@ import (
 func Default() Config {
 	return Config{
 		HTTP: HTTPConfig{
-			Addr: "localhost",
-			Port: 5000,
+			Addr:              "localhost",
+			Port:              5000,
+			ReadTimeout:       15 * time.Second,
+			ReadHeaderTimeout: 5 * time.Second,
+			WriteTimeout:      15 * time.Second,
+			IdleTimeout:       60 * time.Second,
+			ShutdownTimeout:   10 * time.Second,
 		},
 		DB: db.Config{
 			Host:            "localhost",

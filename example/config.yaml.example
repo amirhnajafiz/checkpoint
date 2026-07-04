@@ -9,6 +9,11 @@
 http:
   addr: "localhost"
   port: 5000
+  read_timeout: "15s"
+  read_header_timeout: "5s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+  shutdown_timeout: "10s"
 
 db:
   host: "localhost"

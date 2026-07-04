@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/sync/errgroup"
@@ -68,6 +67,11 @@ func main() {
 
 	e := echo.New()
 	e.HideBanner = true
+	// Connection controls on the underlying HTTP server.
+	e.Server.ReadTimeout = cfg.HTTP.ReadTimeout
+	e.Server.ReadHeaderTimeout = cfg.HTTP.ReadHeaderTimeout
+	e.Server.WriteTimeout = cfg.HTTP.WriteTimeout
+	e.Server.IdleTimeout = cfg.HTTP.IdleTimeout
 	handler.Register(e)
 
 	// A single context cancelled on SIGINT/SIGTERM drives shutdown of both the
@@ -88,7 +92,7 @@ func main() {
 	g.Go(func() error {
 		go func() {
 			<-gctx.Done()
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 			defer cancel()
 			_ = e.Shutdown(shutdownCtx)
 		}()
