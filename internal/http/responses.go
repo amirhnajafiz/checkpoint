@@ -3,7 +3,7 @@ package http
 import (
 	"time"
 
-	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
+	"github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
 
@@ -33,7 +33,7 @@ type serviceClaimsResponse struct {
 	ExpiresAt time.Time         `json:"expires_at"`
 }
 
-func newServiceClaimsResponse(accountID int32, claims *oauth.JWTClaims) serviceClaimsResponse {
+func newServiceClaimsResponse(accountID int32, claims *auth.JWTClaims) serviceClaimsResponse {
 	var expiresAt time.Time
 	if claims.ExpiresAt != nil {
 		expiresAt = claims.ExpiresAt.Time

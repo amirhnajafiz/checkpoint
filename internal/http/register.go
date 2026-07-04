@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
+	"github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 )
@@ -14,14 +14,14 @@ import (
 // Handler holds the dependencies shared by every endpoint.
 type Handler struct {
 	store       *db.Store
-	jwtManager  *oauth.JWTManager
-	googleOAuth *oauth.GoogleOAuth
+	jwtManager  *auth.JWTManager
+	googleOAuth *auth.GoogleOAuth
 	cache       *cache.Client
 }
 
 // NewHandler builds a Handler backed by the store, JWT manager, Google OAuth
 // client, and token cache.
-func NewHandler(store *db.Store, jwtm *oauth.JWTManager, googleoa *oauth.GoogleOAuth, tokenCache *cache.Client) *Handler {
+func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAuth, tokenCache *cache.Client) *Handler {
 	return &Handler{store: store, jwtManager: jwtm, googleOAuth: googleoa, cache: tokenCache}
 }
 

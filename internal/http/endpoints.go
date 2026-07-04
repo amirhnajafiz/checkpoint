@@ -10,7 +10,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
+	"github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
 	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
@@ -69,7 +69,7 @@ func (h *Handler) callback(c echo.Context) error {
 		return err
 	}
 
-	signed, err := h.jwtManager.Generate(user.Email, oauth.JWTKindUser, nil)
+	signed, err := h.jwtManager.Generate(user.Email, auth.JWTKindUser, nil)
 	if err != nil {
 		return err
 	}
@@ -80,6 +80,7 @@ func (h *Handler) callback(c echo.Context) error {
 	if strings.Contains(c.Request().Header.Get("Accept"), "application/json") {
 		return c.JSON(http.StatusOK, loginResponse{Token: signed})
 	}
+
 	return c.Redirect(http.StatusFound, "/app#token="+url.QueryEscape(signed))
 }
 
@@ -136,7 +137,7 @@ func (h *Handler) createAccount(c echo.Context) error {
 // labels) and stores it in the cache (keyed by account id) so the issuer can
 // retrieve it later and the open validate endpoint can confirm it is current.
 func (h *Handler) issueServiceToken(ctx context.Context, accountID int32, labels map[string]string) (string, error) {
-	serviceToken, err := h.jwtManager.Generate(strconv.FormatInt(int64(accountID), 10), oauth.JWTKindService, labels)
+	serviceToken, err := h.jwtManager.Generate(strconv.FormatInt(int64(accountID), 10), auth.JWTKindService, labels)
 	if err != nil {
 		return "", err
 	}
@@ -309,7 +310,7 @@ func (h *Handler) validateService(c echo.Context) error {
 	}
 
 	claims, err := h.jwtManager.Parse(raw)
-	if err != nil || claims.JWTKind != oauth.JWTKindService {
+	if err != nil || claims.JWTKind != auth.JWTKindService {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid service token")
 	}
 

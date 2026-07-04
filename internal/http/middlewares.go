@@ -5,8 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	oauth "github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/labstack/echo/v4"
+
+	"github.com/amirhnajafiz/mayigoo/internal/auth"
 )
 
 // contextUserEmail is the echo context key holding the authenticated user email.
@@ -22,7 +23,7 @@ func (h *Handler) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		claims, err := h.jwtManager.Parse(raw)
-		if err != nil || claims.JWTKind != oauth.JWTKindUser || claims.Subject == "" {
+		if err != nil || claims.JWTKind != auth.JWTKindUser || claims.Subject == "" {
 			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
 		}
 

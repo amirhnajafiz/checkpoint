@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/amirhnajafiz/mayigoo/internal/models"
 	"github.com/labstack/echo/v4"
+
+	"github.com/amirhnajafiz/mayigoo/internal/models"
 )
 
 // bearerToken extracts the token from an "Authorization: Bearer <token>" header.
