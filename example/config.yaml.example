@@ -45,3 +45,7 @@ daemons:
   usage_flush_interval: "10s"
   usage_buffer_size: 1024
   health_ping_interval: "15s"
+
+log:
+  format: "json" # json or text
+  level: "info"  # debug, info, warn, error

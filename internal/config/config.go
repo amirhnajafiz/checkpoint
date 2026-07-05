@@ -14,6 +14,7 @@ import (
 
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
+	"github.com/amirhnajafiz/mayigoo/internal/logger"
 )
 
 const (
@@ -37,6 +38,7 @@ type Config struct {
 	JWT     JWTConfig     `koanf:"jwt"`
 	Google  GoogleConfig  `koanf:"oauth"`
 	Daemons DaemonsConfig `koanf:"daemons"`
+	Logger  logger.Config `koanf:"log"`
 }
 
 // HTTPConfig configures the HTTP server and its connection controls.

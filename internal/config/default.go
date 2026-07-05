@@ -5,6 +5,7 @@ import (
 
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
+	"github.com/amirhnajafiz/mayigoo/internal/logger"
 )
 
 // Default returns the built-in configuration. It is the lowest-precedence
@@ -51,6 +52,10 @@ func Default() Config {
 			UsageFlushInterval: 10 * time.Second,
 			UsageBufferSize:    1024,
 			HealthPingInterval: 15 * time.Second,
+		},
+		Logger: logger.Config{
+			Format: "json",
+			Level:  "info",
 		},
 	}
 }

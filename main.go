@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/amirhnajafiz/mayigoo/internal/auth"
@@ -19,29 +20,37 @@ import (
 	"github.com/amirhnajafiz/mayigoo/internal/daemons"
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 	httpapi "github.com/amirhnajafiz/mayigoo/internal/http"
+	"github.com/amirhnajafiz/mayigoo/internal/logger"
 )
 
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
+		// The logger is not built yet, so fall back to the standard logger.
 		log.Fatalf("config: %v", err)
 	}
+
+	l, err := logger.New(cfg.Logger)
+	if err != nil {
+		log.Fatalf("logger: %v", err)
+	}
+	defer func() { _ = l.Sync() }()
 
 	// Database: connect and apply migrations as a pre-execution phase.
 	conn, err := db.New(cfg.DB)
 	if err != nil {
-		log.Fatalf("database: %v", err)
+		l.Fatal("database", zap.Error(err))
 	}
 	defer func() { _ = conn.Close() }()
 
 	if err := db.Migrate(conn); err != nil {
-		log.Fatalf("migrate: %v", err)
+		l.Fatal("migrate", zap.Error(err))
 	}
 
 	// Redis: the service-token cache.
 	tokenCache, err := cache.New(cfg.Redis)
 	if err != nil {
-		log.Fatalf("redis: %v", err)
+		l.Fatal("redis", zap.Error(err))
 	}
 	defer func() { _ = tokenCache.Close() }()
 
@@ -52,18 +61,18 @@ func main() {
 	googleOAuth := auth.NewGoogleOAuth(cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.RedirectURL)
 	// This exact string must be registered as an Authorized redirect URI on the
 	// Google OAuth client, or Google returns redirect_uri_mismatch.
-	log.Printf("google oauth redirect_uri: %q", cfg.Google.RedirectURL)
+	l.Info("google oauth configured", zap.String("redirect_uri", cfg.Google.RedirectURL))
 
 	// Daemons: aggregate validation usage and monitor dependency health.
-	usageDaemon := daemons.NewUsageDaemon(store, cfg.Daemons.UsageFlushInterval, cfg.Daemons.UsageBufferSize)
+	usageDaemon := daemons.NewUsageDaemon(store, l, cfg.Daemons.UsageFlushInterval, cfg.Daemons.UsageBufferSize)
 	healthDaemon := daemons.NewHealthDaemon(cfg.Daemons.HealthPingInterval,
 		daemons.Checker{Name: "postgres", Check: conn.PingContext},
 		daemons.Checker{Name: "redis", Check: tokenCache.Ping},
 	)
-	manager := daemons.NewManager(usageDaemon, healthDaemon)
+	manager := daemons.NewManager(l, usageDaemon, healthDaemon)
 
 	// HTTP: wire the handler (which talks to the daemons over channels).
-	handler := httpapi.NewHandler(store, jwtManager, googleOAuth, tokenCache, usageDaemon, healthDaemon)
+	handler := httpapi.NewHandler(store, jwtManager, googleOAuth, tokenCache, usageDaemon, healthDaemon, l)
 
 	e := echo.New()
 	e.HideBanner = true
@@ -97,7 +106,7 @@ func main() {
 			_ = e.Shutdown(shutdownCtx)
 		}()
 
-		log.Printf("mayigoo listening on %s", addr)
+		l.Info("http server starting", zap.String("addr", addr))
 		if err := e.Start(addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
@@ -105,8 +114,8 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		log.Fatalf("server: %v", err)
+		l.Fatal("server", zap.Error(err))
 	}
 
-	log.Print("shutdown complete")
+	l.Info("shutdown complete")
 }

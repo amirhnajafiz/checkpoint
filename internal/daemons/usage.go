@@ -2,8 +2,9 @@ package daemons
 
 import (
 	"context"
-	"log"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/amirhnajafiz/mayigoo/internal/db"
 	"github.com/amirhnajafiz/mayigoo/internal/models"
@@ -14,6 +15,7 @@ import (
 // validate path off the database.
 type UsageDaemon struct {
 	store    *db.Store
+	logger   *zap.Logger
 	interval time.Duration
 	events   chan int32
 }
@@ -21,13 +23,14 @@ type UsageDaemon struct {
 // NewUsageDaemon builds a UsageDaemon that flushes every interval. buffer is the
 // capacity of the event channel; a full channel drops events rather than
 // blocking callers.
-func NewUsageDaemon(store *db.Store, interval time.Duration, buffer int) *UsageDaemon {
+func NewUsageDaemon(store *db.Store, logger *zap.Logger, interval time.Duration, buffer int) *UsageDaemon {
 	if buffer <= 0 {
 		buffer = 1
 	}
 
 	return &UsageDaemon{
 		store:    store,
+		logger:   logger,
 		interval: interval,
 		events:   make(chan int32, buffer),
 	}
@@ -78,7 +81,8 @@ func (d *UsageDaemon) flush(ctx context.Context, pending map[int32]int64) {
 			AccountID: id,
 			Usage:     count,
 		}); err != nil {
-			log.Printf("usage daemon: flush account %d: %v", id, err)
+			d.logger.Warn("usage flush failed",
+				zap.Int32("account_id", id), zap.Error(err))
 			continue
 		}
 		delete(pending, id)

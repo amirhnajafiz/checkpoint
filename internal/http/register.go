@@ -1,10 +1,9 @@
 package http
 
 import (
-	"log"
-
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.uber.org/zap"
 
 	"github.com/amirhnajafiz/mayigoo/internal/auth"
 	"github.com/amirhnajafiz/mayigoo/internal/cache"
@@ -20,11 +19,13 @@ type Handler struct {
 	cache       *cache.Client
 	usage       *daemons.UsageDaemon
 	health      *daemons.HealthDaemon
+	logger      *zap.Logger
 }
 
 // NewHandler builds a Handler backed by the store, JWT manager, Google OAuth
-// client, token cache, and the background daemons it talks to over channels.
-func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAuth, tokenCache *cache.Client, usage *daemons.UsageDaemon, health *daemons.HealthDaemon) *Handler {
+// client, token cache, the background daemons it talks to over channels, and the
+// logger.
+func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAuth, tokenCache *cache.Client, usage *daemons.UsageDaemon, health *daemons.HealthDaemon, logger *zap.Logger) *Handler {
 	return &Handler{
 		store:       store,
 		jwtManager:  jwtm,
@@ -32,6 +33,7 @@ func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAu
 		cache:       tokenCache,
 		usage:       usage,
 		health:      health,
+		logger:      logger,
 	}
 }
 
@@ -47,7 +49,10 @@ func (h *Handler) Register(e *echo.Echo) {
 		LogURI:    true,
 		LogStatus: true,
 		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
-			log.Printf("%s %s %d", v.Method, v.URI, v.Status)
+			h.logger.Info("request",
+				zap.String("method", v.Method),
+				zap.String("uri", v.URI),
+				zap.Int("status", v.Status))
 			return nil
 		},
 	}))
