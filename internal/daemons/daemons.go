@@ -1,6 +1,3 @@
-// Package daemons runs long-lived background workers as goroutines under a
-// single manager. Each daemon is driven by a context: cancelling it (e.g. on a
-// termination signal) stops every daemon together.
 package daemons
 
 import "context"

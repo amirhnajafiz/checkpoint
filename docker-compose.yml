@@ -32,7 +32,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      MAYIGOO_HTTP__ADDR: "localhost"
+      MAYIGOO_HTTP__ADDR: ""
       MAYIGOO_HTTP__PORT: 5000
       MAYIGOO_DB__HOST: postgres
       MAYIGOO_DB__PORT: "5432"
