@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -26,7 +27,7 @@ const oauthStateCookie = "oauth_state"
 func (h *Handler) login(c echo.Context) error {
 	state, err := randomState()
 	if err != nil {
-		return err
+		return fmt.Errorf("generate oauth state: %w", err)
 	}
 
 	c.SetCookie(&http.Cookie{
@@ -58,22 +59,22 @@ func (h *Handler) callback(c echo.Context) error {
 
 	oauthToken, err := h.googleOAuth.Exchange(ctx, code)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "oauth code exchange failed")
+		return echo.NewHTTPError(http.StatusUnauthorized, "oauth code exchange failed").SetInternal(err)
 	}
 
 	email, err := h.googleOAuth.Email(ctx, oauthToken)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadGateway, "failed to resolve google account email")
+		return echo.NewHTTPError(http.StatusBadGateway, "failed to resolve google account email").SetInternal(err)
 	}
 
 	user, err := h.store.UpsertUser(ctx, email)
 	if err != nil {
-		return err
+		return fmt.Errorf("upsert user %q: %w", email, err)
 	}
 
 	signed, err := h.jwtManager.Generate(user.Email, auth.JWTKindUser, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("generate user token: %w", err)
 	}
 
 	// API clients (Accept: application/json) get the token as JSON; browsers
@@ -129,7 +130,7 @@ func (h *Handler) createAccount(c echo.Context) error {
 		return err
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("create service account: %w", err)
 	}
 
 	// Cache a fresh token only if the account is active; an inactive account
@@ -149,7 +150,7 @@ func (h *Handler) createAccount(c echo.Context) error {
 func (h *Handler) syncServiceToken(ctx context.Context, accountID int32, active bool, labels map[string]string, ttl time.Duration) (string, error) {
 	if !active {
 		if err := h.cache.DeleteServiceToken(ctx, accountID); err != nil {
-			return "", err
+			return "", fmt.Errorf("delete cached service token: %w", err)
 		}
 		return "", nil
 	}
@@ -164,10 +165,10 @@ func (h *Handler) syncServiceToken(ctx context.Context, accountID int32, active 
 func (h *Handler) issueServiceToken(ctx context.Context, accountID int32, labels map[string]string, ttl time.Duration) (string, error) {
 	serviceToken, err := h.jwtManager.GenerateWithTTL(strconv.FormatInt(int64(accountID), 10), auth.JWTKindService, labels, ttl)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate service token: %w", err)
 	}
 	if err := h.cache.SetServiceToken(ctx, accountID, serviceToken, ttl); err != nil {
-		return "", err
+		return "", fmt.Errorf("cache service token: %w", err)
 	}
 	return serviceToken, nil
 }
@@ -189,12 +190,12 @@ func (h *Handler) listAccounts(c echo.Context) error {
 
 	list, err := h.store.ListUserServiceAccounts(ctx, email)
 	if err != nil {
-		return err
+		return fmt.Errorf("list service accounts: %w", err)
 	}
 
 	kvRows, err := h.store.ListUserServiceAccountKV(ctx, email)
 	if err != nil {
-		return err
+		return fmt.Errorf("list service account labels: %w", err)
 	}
 	kvByAccount := make(map[int32]map[string]string)
 	for _, r := range kvRows {
@@ -224,12 +225,12 @@ func (h *Handler) getAccount(c echo.Context) error {
 
 	meta, err := h.store.GetServiceAccountMeta(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("get service account meta: %w", err)
 	}
 
 	kvRows, err := h.store.ListServiceAccountKV(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("list service account labels: %w", err)
 	}
 
 	return c.JSON(http.StatusOK, serviceAccountResponseFrom(account, meta, kvMap(kvRows)))
@@ -274,12 +275,12 @@ func (h *Handler) updateAccount(c echo.Context) error {
 		return setAccountKV(ctx, q, id, labels)
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("update service account %d: %w", id, err)
 	}
 
 	meta, err := h.store.GetServiceAccountMeta(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("get service account meta: %w", err)
 	}
 
 	// Reconcile the cached token with the new active state: an active account
@@ -307,12 +308,12 @@ func (h *Handler) deleteAccount(c echo.Context) error {
 
 	// service_account_meta and service_account_kv cascade on delete.
 	if err := h.store.DeleteServiceAccount(ctx, id); err != nil {
-		return err
+		return fmt.Errorf("delete service account %d: %w", id, err)
 	}
 
 	// Drop the cached token; ignore a missing entry.
 	if err := h.cache.DeleteServiceToken(ctx, id); err != nil {
-		return err
+		return fmt.Errorf("delete cached service token: %w", err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -335,7 +336,7 @@ func (h *Handler) getAccountToken(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "no token cached for this account")
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("get cached service token: %w", err)
 	}
 
 	return c.JSON(http.StatusOK, tokenResponse{Token: serviceToken})
@@ -367,7 +368,7 @@ func (h *Handler) validateService(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "service token is not active")
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("get cached service token: %w", err)
 	}
 
 	// Report the successful validation to the usage daemon (non-blocking); it
@@ -382,7 +383,7 @@ func (h *Handler) validateService(c echo.Context) error {
 func (h *Handler) healthCheck(c echo.Context) error {
 	snapshot, err := h.health.Health(c.Request().Context())
 	if err != nil {
-		return err
+		return fmt.Errorf("read health snapshot: %w", err)
 	}
 
 	status := http.StatusOK
@@ -398,7 +399,7 @@ func (h *Handler) healthCheck(c echo.Context) error {
 func (h *Handler) ownedAccount(c echo.Context, id int32) (models.ServiceAccount, error) {
 	account, err := h.store.GetServiceAccount(c.Request().Context(), id)
 	if err != nil {
-		return models.ServiceAccount{}, err
+		return models.ServiceAccount{}, fmt.Errorf("get service account %d: %w", id, err)
 	}
 
 	if account.UserEmail != userEmail(c) {

@@ -42,7 +42,7 @@ func NewHandler(store *db.Store, jwtm *auth.JWTManager, googleoa *auth.GoogleOAu
 func (h *Handler) Register(e *echo.Echo) {
 	e.Validator = newValidator()
 	e.Renderer = newTemplateRenderer()
-	e.HTTPErrorHandler = errorHandler
+	e.HTTPErrorHandler = h.errorHandler
 
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod: true,
