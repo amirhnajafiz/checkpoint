@@ -19,8 +19,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Fast lane: formatting, vet, lint, and unit tests. No Docker required, so it
-  # runs the default build (miniredis-backed cache tests included).
   checks:
     runs-on: ubuntu-latest
     steps:
@@ -30,11 +28,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-
-      # Install to GOPATH/bin, which check.sh already puts on PATH, so CI and
-      # local `scripts/check.sh` run the exact same lint step.
-      - name: Install golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" latest
+        
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.1.1
+          install-mode: goinstall
 
       - name: Run checks (gofmt, vet, lint, unit tests)
         run: ./scripts/check.sh
