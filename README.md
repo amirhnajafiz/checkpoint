@@ -1,6 +1,9 @@
-# MayIGoo
+# Ⓜ️ay I Goo?
 
 [![CI](https://github.com/amirhnajafiz/mayigoo/actions/workflows/ci.yml/badge.svg)](https://github.com/amirhnajafiz/mayigoo/actions/workflows/ci.yml)
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/amirhnajafiz/mayigoo)](https://img.shields.io/github/go-mod/go-version/amirhnajafiz/mayigoo)
+[![GitHub Tag](https://img.shields.io/github/v/tag/amirhnajafiz/mayigoo)](https://img.shields.io/github/v/tag/amirhnajafiz/mayigoo)
+[![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/amirhnajafiz/mayigoo)](https://img.shields.io/github/languages/code-size/amirhnajafiz/mayigoo)
 
 A small **service-account authorization service** written in Go, and a
 reference for how to structure a real API service: HTTP, auth, database,
