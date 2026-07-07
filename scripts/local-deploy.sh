@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# bring the local mayigoo stack (app + postgres + redis) up or down via
+
+# Bring the local mayigoo stack (app + postgres + redis) up or down via
 # docker compose.
 #   scripts/local-deploy.sh up     # build and start the stack in the background
 #   scripts/local-deploy.sh down   # stop and remove the containers

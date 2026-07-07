@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    paths: &code_paths
+      - 'internal/**'
+      - 'build/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'main.go'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths: *code_paths
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast lane: formatting, vet, lint, and unit tests. No Docker required, so it
+  # runs the default build (miniredis-backed cache tests included).
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Install to GOPATH/bin, which check.sh already puts on PATH, so CI and
+      # local `scripts/check.sh` run the exact same lint step.
+      - name: Install golangci-lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" latest
+
+      - name: Run checks (gofmt, vet, lint, unit tests)
+        run: ./scripts/check.sh
+
+      - name: Run integration tests (testcontainers Postgres + miniredis)
+        run: ./scripts/integration-test.sh

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# run static analysis and tests for the project.
+
+# Run static analysis and tests for the project.
 
 set -uo pipefail
 
